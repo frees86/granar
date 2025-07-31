@@ -298,4 +298,4 @@ create_anatomy <- function(path = NULL,  # path to xml file
 
 }
 
-`%!in%` <- compose(`!`, `%in%`)
+#`%!in%` <- compose(`!`, `%in%`)

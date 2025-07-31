@@ -5,6 +5,9 @@
 #' @export
 #'
 
+# Adding an explicit function for handling %!in%:
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
 smoothy_cells <- function(data){
 
   for(i in c(1:max(data$id_group))){

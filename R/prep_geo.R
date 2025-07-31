@@ -123,9 +123,9 @@ prep_geo <- function(cross_section, cell_wall_thickness = 0.2, corner_smoothing=
   return(rbind (wall, root_cell)%>%mutate(res = 1))
 }
 
-`%!in%` <- compose(`!`, `%in%`)
+#`%!in%` <- compose(`!`, `%in%`)
 
-`%!in%` <- compose(`!`, `%in%`)
+#`%!in%` <- compose(`!`, `%in%`)
 
 
 
