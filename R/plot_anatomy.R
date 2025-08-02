@@ -1,7 +1,7 @@
 #' Plot root anatomy
 #'
 #' This function plot the results of a 2D root cross section anatomy simulation
-#' @param sim the simulation objkect, returned by 'create_anatomy.R'
+#' @param sim the simulation object, returned by 'create_anatomy.R'
 #' @param col Parameter to choose for the coloring of the cells. Accepted arguments are 'type', 'area', 'dist', 'id_cell', "segment' and 'angle'. Default = 'type'
 #' @param leg Display the legend; Default= TRUE
 #' @param apo_bar Display apolastic barrier when col = "segment". 1 endodermal casparian strip, 2 fully suberized endodermis, 3 fully suberized endodermis and an exodermal casparian strip, and 4 exodermis and endodermis are fully suberized.

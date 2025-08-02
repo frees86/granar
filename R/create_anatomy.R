@@ -34,6 +34,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
                            verbatim = F,
                            maturity_x = F,
                            paraview = T){
+
   # Return NULL is no parameters are specified
   if( is.null(path) & is.null(parameters)){
     warning("Please specify a parameter set for the simulation")
@@ -92,7 +93,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
 
   # Inclusion of the pith in the stele
   if(length(params$value[params$name == "pith" & params$type == "layer_diameter"]) > 0){
-  all_cells <- make_pith(all_cells, params, center)
+    all_cells <- make_pith(all_cells, params, center)
   }
 
   # Addition of intercellular space and reshape cortex layers
@@ -153,7 +154,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
     rs1 = clear_nodes(rs1)
     if(verbatim) message("remove cells for aerenchyma")
     rs1 <- aerenchyma(params, rs1)
-  # simplify septa
+    # simplify septa
     if(verbatim) message("simplify septa between aerenchyma lacuna")
     rs1 <- septa(rs1)
   }else{
@@ -197,12 +198,14 @@ create_anatomy <- function(path = NULL,  # path to xml file
   all_cells <- merge(all_cells, ids, by="id_cell")
   all_cells$id_cell <- all_cells$new
 
-  mX <- mean(rs1$area[rs1$type == "xylem"])
-  if(params$value[params$name == "planttype"] == 1){
-    if(verbatim) message("for monocot, if xylem is above average, it is labeled as metaxylem")
-    rs1$type[rs1$type == "xylem" & rs1$area > mX] <- "metaxylem"
-  }
-
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # WATCH OUT: WE DO NOT DISTINGUISH ANY MORE METAXYLEM AND XYLEM
+  # mX <- mean(rs1$area[rs1$type == "xylem"])
+  # if(params$value[params$name == "planttype"] == 1){
+  #   if(verbatim) message("for monocot, if xylem is above average, it is labeled as metaxylem")
+  #   rs1$type[rs1$type == "xylem" & rs1$area > mX] <- "metaxylem"
+  # }
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   if(length(params$value[params$name == "epidermis" & params$type == "remove"])>0){
     if(params$value[params$name == "epidermis" & params$type == "remove"]){
@@ -212,14 +215,14 @@ create_anatomy <- function(path = NULL,  # path to xml file
   }
 
   one_cells <- rs1%>%
-    filter(!duplicated(id_cell))# , !duplicated(type), !duplicated(id_group), !duplicated(area)
+    filter(!duplicated(id_cell)) #!duplicated(type)), !duplicated(id_group), !duplicated(area)
 
   all_cells <- merge(all_cells, one_cells, by = "id_cell")
 
   # adding the outputs by cell layers
   out <- plyr::ddply(all_cells, plyr::.(type.y), summarise, n_cells=length(type.y),
-               layer_area = sum(area.y),
-               cell_area = mean(area.y)) %>%
+                     layer_area = sum(area.y),
+                     cell_area = mean(area.y)) %>%
     mutate(name = type.y) %>%
     dplyr::select(-type.y) %>%
     tidyr::gather(key = "type", value = "value", n_cells, layer_area, cell_area) %>%
@@ -254,7 +257,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
     nodes$type[nodes$type == "metaxylem" & nodes$area > tmp_m ] <- "stele"
   }
 
- # comment
+  # comment
   if(paraview){
     walls <- pv_ready(rs1)
     wall_length <- walls%>%select(-x, -y, -xx, -yy)%>% # ends_with(as.character(c(0:9)))
@@ -298,4 +301,4 @@ create_anatomy <- function(path = NULL,  # path to xml file
 
 }
 
-#`%!in%` <- compose(`!`, `%in%`)
+`%!in%` <- compose(`!`, `%in%`)
