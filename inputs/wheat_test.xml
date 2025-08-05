@@ -4,26 +4,23 @@
 <granar>
 	
 	<!-- General parameters -->
-	<planttype param="1" /> <!-- 1 = monocot / 2 = dicot -->
+	<planttype param="1" />
 	<secondarygrowth param="0"/>
-
-	<randomness param="3" />
+	<randomness param="2" />
 	
 	<!-- Cell layers -->
-	<stele cell_diameter="0.006" n_layers="6" layer_diameter = "0.2" order="1"/>
-	<endodermis cell_diameter="0.02" n_layers="1" order="2"/>
+	<stele cell_diameter="0.008" n_layers="6" layer_diameter = "0.2" order="1"/>
+	<central_xylem cell_diameter="0.070" n_files="1"/>
+	<xylem cell_diameter="0.050" n_files="6" order="1.6" ratio ="1" fraction_of_stele_radius="0.75"/>
+	<phloem cell_diameter="0.025" fraction_of_stele_radius="0.70"/>
+	<companion_cell cell_diameter="0.008" n_cells_per_phloem="2" />
+	<pericycle cell_diameter="0.02" n_layers="1" order="2"/>
+	<endodermis cell_diameter="0.02" n_layers="1" order="3"/>
 	<cortex cell_diameter="0.038" n_layers="3"  order="4"/>
 	<exodermis cell_diameter="0.030" n_layers="1" order="5"/>	
 	<epidermis cell_diameter="0.018" n_layers="1" order="6"/>
 
-
-	<!-- Vessels-->
-	<central_xylem max_size="0.070" n_files="1"/>
-	<xylem max_size="0.023" n_files="6" order="1.6" ratio ="1" />
-	<phloem max_size="0.020" n_files="3" />
-	
 	<!-- Other cell types -->
-	<!--aerenchyma proportion="0" n_files="10"/-->
 	<aerenchyma proportion="0" n_files="10"/>
 
 </granar>

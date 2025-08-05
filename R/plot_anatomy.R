@@ -81,8 +81,72 @@ plot_anatomy <- function(sim=NULL,
                                     d < 0.4 & d > - 0.4 | d > 2.8 | d < -2.8))
     }
   }else{
-    pl <- ggplot(sim$nodes) +
-      geom_polygon(aes_string("x", "y", group="id_cell", fill=col), colour="white") +
+
+    # pl <- ggplot(sim$nodes) +
+    #   geom_polygon(aes_string("x", "y", group="id_cell", fill=col), colour="white") +
+    #   theme_classic() +
+    #   coord_fixed() +
+    #   theme(axis.line=element_blank(),
+    #         axis.text.x=element_blank(),
+    #         axis.text.y=element_blank(),
+    #         axis.ticks=element_blank(),
+    #         axis.title.x=element_blank(),
+    #         axis.title.y=element_blank())
+
+    # We modify the original dataframe for plotting purposes:
+    df <- sim$nodes %>%
+      # We rename the type into "Tissue" with nicer labels for the legend:
+      mutate(Tissue = case_when(type == "central_xylem" ~ "Central xylem",
+                                type == "xylem" ~ "Xylem",
+                                type == "phloem" ~ "Phloem",
+                                type == "companion_cell" ~"Phloem companion cells",
+                                type == "stele" ~ "Stele parenchyma",
+                                type == "pericycle" ~ "Pericycle",
+                                type == "endodermis" ~ "Endodermis",
+                                type == "cortex" ~ "Cortex",
+                                type == "exodermis" ~ "Exodermis",
+                                type == "epidermis" ~ "Epidermis",
+                                .default = type)) %>%
+      # We reorder the tissue levels:
+      mutate(Tissue = fct_relevel(Tissue,
+                                  "Central xylem",
+                                  "Xylem",
+                                  "Phloem",
+                                  "Phloem companion cells",
+                                  "Stele parenchyma",
+                                  "Pericycle",
+                                  "Endodermis",
+                                  "Cortex",
+                                  "Exodermis",
+                                  "Epidermis")) %>%
+      # We create a specific color for each type:
+      mutate(color = case_when(type == "central_xylem" ~ "deepskyblue3",
+                               type == "xylem" ~ "deepskyblue2",
+                               type == "phloem" ~ "brown2",
+                               type == "companion_cell" ~"brown1",
+                               type == "stele" ~ "darkgoldenrod1",
+                               type == "pericycle" ~ "darkgoldenrod2",
+                               type == "endodermis" ~ "darkgoldenrod3",
+                               type == "cortex" ~ "bisque1",
+                               type == "exodermis" ~ "bisque2",
+                               type == "epidermis" ~ "bisque3",
+                               .default = "white"))
+    # We create a list of color attributing a color to each tissue type:
+    color_attribution = c("Central xylem" = "deepskyblue3",
+                          "Xylem" = "deepskyblue2",
+                          "Phloem" = "brown2",
+                          "Phloem companion cells" = "brown1",
+                          "Stele parenchyma" = "darkgoldenrod1",
+                          "Pericycle" = "darkgoldenrod2",
+                          "Endodermis" = "darkgoldenrod3",
+                          "Cortex" = "bisque1",
+                          "Exodermis" = "bisque2",
+                          "Epidermis" = "bisque3")
+
+    pl <- ggplot(df) +
+      # geom_polygon(aes_string("x", "y", group="id_cell", fill=col), colour="white") +
+      geom_polygon(aes_string("x", "y", group="id_cell", fill="Tissue"), colour="black") +
+      scale_fill_manual(values = color_attribution) +
       theme_classic() +
       coord_fixed() +
       theme(axis.line=element_blank(),
@@ -90,7 +154,13 @@ plot_anatomy <- function(sim=NULL,
             axis.text.y=element_blank(),
             axis.ticks=element_blank(),
             axis.title.x=element_blank(),
-            axis.title.y=element_blank())
+            axis.title.y=element_blank()) +
+      theme(legend.position="left") +
+      # We add a spatial scale at the bottom of the graph:
+      geom_segment(aes(x = 0, y = 0, xend = 0.1, yend = 0), size=1) +
+      geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +
+      geom_segment(aes(x = 0.1, y = -0.005, xend = 0.1, yend = 0.005), size=1) +
+      annotate("text", x=0.05, y=0.020, label= "100 µm", size=3) +
 
     if(!col %in% c("type", "cell_group")){
       pl <- pl + viridis::scale_fill_viridis()
@@ -100,9 +170,6 @@ plot_anatomy <- function(sim=NULL,
       pl <- pl + theme(legend.position="none")
     }
   }
-
-
-
   return(pl)
 }
 
