@@ -26,14 +26,14 @@
 #' write_anatomy_xml(sim = root, path = system.file("extdata", "current_root.xml", package = "granar"))
 #'
 
-
-
-
 create_anatomy <- function(path = NULL,  # path to xml file
                            parameters = NULL,
                            verbatim = F,
                            maturity_x = F,
                            paraview = T){
+
+  # CHECKING & SETTING PARAMETERS:
+  ################################
 
   # Return NULL is no parameters are specified
   if( is.null(path) & is.null(parameters)){
@@ -63,32 +63,37 @@ create_anatomy <- function(path = NULL,  # path to xml file
         return(NULL)
       }
     }
-
   }
 
-
-  # set initial time
+  # We set initial time
   t_1 <- Sys.time()
   t1 <- proc.time()
-  # set the random factor
+  # We set the random factor:
   random_fact <- params$value[params$name == "randomness"] / 10 * params$value[params$name == "stele" & params$type == "cell_diameter"]
   proportion_aerenchyma <- params$value[params$name == "aerenchyma" & params$type == "proportion"]
 
+  # CREATING THE CENTERS OF THE CELLS:
+  ####################################
+
+  # We create tables containing the information of each cell layer to be drawn:
   data_list <- cell_layer(params)
   layers <- data_list$layers # layers: cell_type, diameter, n_layer, order
-  all_layers <- data_list$all_layers # expand layers
-  center <- max(all_layers$radius) # center of the cross section
+  all_layers <- data_list$all_layers # expand layers, with e.g. the number of cells per layer and the radius
 
-  # layer time
+  # The x-coordinate and y-coordinate of the center of the cross section will be identical.
+  # They are defined as the highest radius of the layers calculated above:
+  center <- max(all_layers$radius)
+
+  # We get the time sed for creating layers:
   t2 <- proc.time()
 
-  # set all cell center
+  # We set the center of each cell:
   all_cells <- create_cells(all_layers, random_fact)
-  # Get summary of cells
+  # We get a summary of cells:
   summary_cells <- plyr::ddply(all_cells, plyr::.(type), summarise, n_cells = length(angle))
-  # Label Cortex cells
+  # We relabel all cortex-related cells as "cortex":
   all_cells$type[grepl("cortex", all_cells$type)]<- "cortex"
-  # Initialize id_group variable
+  # We initialize the id_group variable:
   all_cells$id_group <- 0
 
   # Inclusion of the pith in the stele
@@ -102,16 +107,16 @@ create_anatomy <- function(path = NULL,  # path to xml file
     all_cells <- rondy_cortex(params, all_cells, center)
   }
 
-  # Get the vascular system inside the stele
-  # choose growth condition
-  # if none --> do primary growth
+  # We get the vascular system inside the stele:
   if(verbatim) message("Add vascular elements")
+  # Case 1: No secondary growth
   if(length(params$value[params$name == "secondarygrowth"]) ==  0){
     all_cells <- vascular(all_cells, params, layers, center)
   } else if(params$value[params$name == "secondarygrowth"] == 0){
     all_cells <- vascular(all_cells, params, layers, center)
+  # Case 2: Secondary growth
   } else if (params$value[params$name == "secondarygrowth"] == 1){
-    # if sec growth, then do circle packing
+    # In case of secondary growth, we do circle packing:
     packing<-pack_xylem(all_cells, params, center)
     rm_stele <- all_cells%>%
       filter(type != "stele")
@@ -123,12 +128,31 @@ create_anatomy <- function(path = NULL,  # path to xml file
   # Change parenchyma into stele, otherwise it will have serious problems later in MECHA
   all_cells$type[all_cells$type == "parenchyma"] = "stele"
 
+  # PERFORMING THE TESSELATION TO GET THE CELL WALLS:
+  ###################################################
+
+  # OPTION WITH WEIGHTED VORONOI (Apollonius package):
+  # We create a numeric matrix with only the x and y coordinates of the cell centers:
+  sites = NULL
+  for (i in seq(1,length(all_cells$x))) {
+    sites <- rbind(sites, c(all_cells$x[i], all_cells$y[i]))
+  }
+  # We create a numeric vector containing only the radius of the corresponding cells:
+  radii <- all_cells %>%
+    mutate(cell_radius = case_when(type=="cortex" ~ 1.0,
+                                   .default = 1.0)) %>%
+    pull(cell_radius)
+  apo <- Apollonius(sites, radii)
+  View(apo)
+
   # Get the voronio data
   vtess <- deldir(all_cells$x, all_cells$y, digits = 8)
   if(is.null(vtess)){return(NULL)}
   vorono_list <- cell_voro(all_cells, vtess, center)
   all_cells <- vorono_list$all_cells
   rs2 <- vorono_list$rs2
+
+  message("Tesselation has been done!")
 
   rs1 <- rs2 %>%
     dplyr::group_by(id_cell) %>%
@@ -141,8 +165,10 @@ create_anatomy <- function(path = NULL,  # path to xml file
   rs1$id_point <- paste0(rs1$x,";",rs1$y)
 
   # Uniform cell by id_group
-  if(verbatim) message("Smooth edge of large cells")
-  rs1 <- smoothy_cells(rs1)
+  if (max(rs1$id_group)>0) {
+    if(verbatim) message("Smooth edge of large cells")
+    rs1 <- smoothy_cells(rs1)
+  }
 
   if(verbatim) message("Merging inter cellular space")
   rs1 <- fuzze_inter(rs1)
@@ -160,8 +186,6 @@ create_anatomy <- function(path = NULL,  # path to xml file
   }else{
     cortex_area <- ini_cortex_area
   }
-
-
 
   # hairy epidermis # add-on 27-02-2020
   #-----------------------------------------
@@ -229,7 +253,6 @@ create_anatomy <- function(path = NULL,  # path to xml file
     mutate(io = "output")%>%
     dplyr::select(io, everything())
   output <- rbind(output, out)
-
 
   time <- as.numeric(Sys.time()-t_1)
 

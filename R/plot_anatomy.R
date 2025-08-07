@@ -118,19 +118,19 @@ plot_anatomy <- function(sim=NULL,
                                   "Endodermis",
                                   "Cortex",
                                   "Exodermis",
-                                  "Epidermis")) %>%
-      # We create a specific color for each type:
-      mutate(color = case_when(type == "central_xylem" ~ "deepskyblue3",
-                               type == "xylem" ~ "deepskyblue2",
-                               type == "phloem" ~ "brown2",
-                               type == "companion_cell" ~"brown1",
-                               type == "stele" ~ "darkgoldenrod1",
-                               type == "pericycle" ~ "darkgoldenrod2",
-                               type == "endodermis" ~ "darkgoldenrod3",
-                               type == "cortex" ~ "bisque1",
-                               type == "exodermis" ~ "bisque2",
-                               type == "epidermis" ~ "bisque3",
-                               .default = "white"))
+                                  "Epidermis"))
+      # # We create a specific color for each type:
+      # mutate(color = case_when(type == "central_xylem" ~ "deepskyblue3",
+      #                          type == "xylem" ~ "deepskyblue2",
+      #                          type == "phloem" ~ "brown2",
+      #                          type == "companion_cell" ~"brown1",
+      #                          type == "stele" ~ "darkgoldenrod1",
+      #                          type == "pericycle" ~ "darkgoldenrod2",
+      #                          type == "endodermis" ~ "darkgoldenrod3",
+      #                          type == "cortex" ~ "bisque1",
+      #                          type == "exodermis" ~ "bisque2",
+      #                          type == "epidermis" ~ "bisque3",
+      #                          .default = "white"))
     # We create a list of color attributing a color to each tissue type:
     color_attribution = c("Central xylem" = "deepskyblue3",
                           "Xylem" = "deepskyblue2",
@@ -143,6 +143,7 @@ plot_anatomy <- function(sim=NULL,
                           "Exodermis" = "bisque2",
                           "Epidermis" = "bisque3")
 
+    # We create the graph with ggplot:
     pl <- ggplot(df) +
       # geom_polygon(aes_string("x", "y", group="id_cell", fill=col), colour="white") +
       geom_polygon(aes_string("x", "y", group="id_cell", fill="Tissue"), colour="black") +
@@ -156,6 +157,8 @@ plot_anatomy <- function(sim=NULL,
             axis.title.x=element_blank(),
             axis.title.y=element_blank()) +
       theme(legend.position="left") +
+      # We add central points corresponding to the center of each cell:
+      geom_point(aes(mx,my), size=0.5) +
       # We add a spatial scale at the bottom of the graph:
       geom_segment(aes(x = 0, y = 0, xend = 0.1, yend = 0), size=1) +
       geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +

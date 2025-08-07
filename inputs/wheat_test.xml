@@ -11,8 +11,8 @@
 	<!-- Cell layers -->
 	<stele cell_diameter="0.008" n_layers="6" layer_diameter = "0.2" order="1"/>
 	<central_xylem cell_diameter="0.070" n_files="1"/>
-	<xylem cell_diameter="0.050" n_files="6" order="1.6" ratio ="1" fraction_of_stele_radius="0.75"/>
-	<phloem cell_diameter="0.025" fraction_of_stele_radius="0.70"/>
+	<xylem cell_diameter="0.030" n_files="6" order="1.6" ratio ="1" fraction_of_stele_radius="0.75"/>
+	<phloem cell_diameter="0.020" fraction_of_stele_radius="0.70"/>
 	<companion_cell cell_diameter="0.008" n_cells_per_phloem="2" />
 	<pericycle cell_diameter="0.02" n_layers="1" order="2"/>
 	<endodermis cell_diameter="0.02" n_layers="1" order="3"/>

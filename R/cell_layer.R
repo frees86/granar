@@ -9,32 +9,35 @@
 #'
 
 cell_layer <- function(params){
+
+  # We create a dataframe containing the main properties of layer groups, i.e. the cell diameter,
+  # the number of layers per group, and the order by which the groups are ranked:
   layers <- params %>%
     filter(type %in% c("cell_diameter","n_layers","order")) %>%
     tidyr::spread(type, value) %>%
-    filter(!is.na(n_layers)) %>%
+    # We remove any pre-defined layers in the parameters if n_layers is nil:
+    filter(!is.na(n_layers) & n_layers > 0) %>%
     arrange(order)
-  stele_diameter <- params$value[params$name == "stele" & params$type == "layer_diameter"]
 
-  # Create and "outside" layer to serve as boundary for the voronoi algorithm.
+  # We get the cell diameter of the outer layers (it is usually the epidermis):
+  outer_layers <- layers %>%
+    filter(order==max(order))
+  outer_layer_diameter = outer_layers$cell_diameter
+
+  # We create 2 "outside" layers to serve as boundary for the tesselation algorithm:
   layers <- rbind(layers, data.frame(name="outside",
                                      n_layers=2,
-                                     cell_diameter=layers$cell_diameter[layers$name == "epidermis"]* 1,
+                                     cell_diameter=outer_layer_diameter,
                                      order = max(layers$order)+1))
 
-  # Get the number of cell layers for the stele
+  # We get the diameter of the stele:
+  stele_diameter <- params$value[params$name == "stele" & params$type == "layer_diameter"]
+
+  # We get the number of cell layers for the stele:
   layers$n_layers[layers$name == "stele"] <- round((stele_diameter/2) / layers$cell_diameter[layers$name == "stele"]) #
   #layers$size[layers$name == "stele"] <- diam_stele
 
-  #Remove phloem if no layers
-  if("phloem" %in% unique(layers$name)){
-    if(layers$n_layers[layers$name == "phloem"] == 0){
-      layers<-layers %>% filter(name != "phloem")
-    }
-  }
-  
-
-  # Get one row per actual cell layer
+  # We get one row per actual cell layer:
   all_layers <- NULL
   for(i in c(1:nrow(layers))){
     for(j in c(1:layers$n_layers[i])){
@@ -42,7 +45,10 @@ cell_layer <- function(params){
     }
   }
 
+  # We now calculate the number of cells per layer, the radius and perimeter of the circle
+  # corresponding to each layer, and the angle between layers (?):
   all_layers <- layer_info(all_layers)
 
+  # We return a list containing the detailed or general information about the layers:
   return(list(all_layers = all_layers , layers = layers))
 }
