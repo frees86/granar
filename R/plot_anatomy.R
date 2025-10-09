@@ -21,7 +21,8 @@ plot_anatomy <- function(sim=NULL,
                          col = "type",
                          leg = T,
                          apo_bar = 0,
-                         phi_thck = 0){
+                         phi_thck = 0,
+                         plotting_cell_centers=FALSE){
 
 
   if(col == "segment"){
@@ -156,14 +157,18 @@ plot_anatomy <- function(sim=NULL,
             axis.ticks=element_blank(),
             axis.title.x=element_blank(),
             axis.title.y=element_blank()) +
-      theme(legend.position="left") +
-      # We add central points corresponding to the center of each cell:
-      geom_point(aes(mx,my), size=0.5) +
-      # We add a spatial scale at the bottom of the graph:
-      geom_segment(aes(x = 0, y = 0, xend = 0.1, yend = 0), size=1) +
-      geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +
-      geom_segment(aes(x = 0.1, y = -0.005, xend = 0.1, yend = 0.005), size=1) +
-      annotate("text", x=0.05, y=0.020, label= "100 µm", size=3) +
+      theme(legend.position="left")
+
+    if (plotting_cell_centers) {
+      pl <- pl +
+        # We add central points corresponding to the center of each cell:
+        geom_point(aes(mx,my), size=0.5) +
+        # We add a spatial scale at the bottom of the graph:
+        geom_segment(aes(x = 0, y = 0, xend = 0.1, yend = 0), size=1) +
+        geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +
+        geom_segment(aes(x = 0.1, y = -0.005, xend = 0.1, yend = 0.005), size=1) +
+        annotate("text", x=0.05, y=0.020, label= "100 µm", size=3)
+    }
 
     if(!col %in% c("type", "cell_group")){
       pl <- pl + viridis::scale_fill_viridis()

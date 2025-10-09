@@ -1,4 +1,4 @@
-#' @title Get the cooridnates for every nodes in the voronoi
+#' @title Get the coordinates for every nodes in the voronoi
 #'
 #'
 #' @param all_cells The cellular dataframe
@@ -19,7 +19,7 @@ cell_voro <- function(all_cells, vtess, center){
   rs <- vtess$dirsgs[vtess$dirsgs$ind1 %in% ids |
                        vtess$dirsgs$ind2 %in% ids,]
 
-  # Get the cooridnates for every nodes in the voronoi
+  # Get the coordinates for every nodes in the voronoi
   rs <- rs %>% arrange(ind1)
   rs2 <- data.frame(x = rs$x1, y=rs$y1, id_cell = rs$ind1)
   rs2 <- rbind(rs2, data.frame(x = rs$x2, y=rs$y2, id_cell = rs$ind1))

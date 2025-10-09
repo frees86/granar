@@ -48,58 +48,18 @@ vascular <- function(all_cells, params, layers, center){
   } else {
     k_max_cortex  <- 0
   }
+  k_max <- max(all_cells$id_group)
 
   # CASE 1: MONOCOT PLANT
   #######################
 
   if(plant_type == 1){
 
+    # We define the radius of the whole stele:
+    stele_radius <- params$value[params$type == "radius" & params$name == "stele"]
+
     # We initialize the id_group:
     k <- 1
-
-    # DEFINING THE POSITION OF CENTRAL XYLEM VESSELS:
-    #------------------------------------------------
-
-    # If there is only one central xylem vessel to be displayed:
-    if(n_central_xylem_files == 1){
-      # The metaxylem will be similar to a central xylem vessel:
-      xyl_central <- data.frame(r = 0,
-                                d = params$value[params$type == "cell_diameter" & params$name == "central_xylem"])
-      # If there is many central xylem vessels:
-    } else if (n_central_xylem_files > 1) {
-      # We define the radius of the circle around which central xylem vessels will be positionned:
-      xyl_central <- data.frame(r = (params$value[params$type == "cell_diameter" & params$name == "central_xylem"])/2,
-                                d = params$value[params$type == "cell_diameter" & params$name == "central_xylem"])
-    }
-
-    # We define the (x,y) coordinate of the center of the central metaxylem vessel:
-    if (n_central_xylem_files > 0) {
-      all_central_xylem <- data.frame(x = center,
-                                      y = center,
-                                      d = xyl_central$d[1],
-                                      angle = 0,
-                                      id_group = k)
-      all_cells <- rbind(all_cells, data.frame(
-        angle = 0,
-        radius = xyl_central$r[1],
-        x = center,
-        y = center,
-        id_layer = 201, # Comparatively, the id_layer for xylem is 20...
-        id_cell = 1,
-        order = 1.5,
-        type = "central_xylem",
-        id_group = k))
-      # We increment the id_group for the next vessel:
-      k <- k+1
-    }
-
-    # REMOVING STELE CELLS INSIDE THE CENTRAL XYLEM VESSEL:
-    if (n_central_xylem_files > 0) {
-      for(i in c(1:nrow(all_central_xylem))){
-        all_cells <- all_cells %>%
-          filter(!((x - all_central_xylem$x[i])^2 + (y - all_central_xylem$y[i])^2 < (all_central_xylem$d[i]/1.5)^2 & type == "stele"))
-      }
-    }
 
     # DEFINING THE POSITION OF METAXYLEM VESSELS:
     #--------------------------------------------
@@ -115,16 +75,7 @@ vascular <- function(all_cells, params, layers, center){
       xyl <- data.frame(r = 0,
                         d = radius_xylem_cell*2)
     } else if (n_xylem_files > 0) {
-      # We get the fraction of the radius of the stele where xylem cells will be located around a circle:
-      if (length(params$value[params$name == "xylem" & params$type == "fraction_of_stele_radius"]) == 1) {
-        fraction_of_stele_radius = params$value[params$name == "xylem" & params$type == "fraction_of_stele_radius"]
-      } else {
-        fraction_of_stele_radius = 0.70
-      }
-      # We define the radius of the circle around which xylem cells are positioned:
-      r = (params$value[params$type == "layer_diameter" & params$name == "stele"])/2* fraction_of_stele_radius
-      # - radius_xylem_cell
-      xyl <- data.frame(r = r,
+      xyl <- data.frame(r = params$value[params$name == "xylem" & params$type == "radius"],
                         d = radius_xylem_cell*2)
     }
 
@@ -161,10 +112,11 @@ vascular <- function(all_cells, params, layers, center){
       }
 
       # Finally, we remove the stele cells inside the perimeter of metaxylem vessels:
+      coefficient = 1.25
       if (!is.null(all_xylem)) {
         for(i in c(1:nrow(all_xylem))){
           all_cells <- all_cells %>%
-            filter(!((x-all_xylem$x[i])^2 + (y - all_xylem$y[i])^2 < (all_xylem$d[i]/1.5)^2
+            filter(!((x-all_xylem$x[i])^2 + (y - all_xylem$y[i])^2 < (all_xylem$d[i]/coefficient)^2
                      & type == "stele"))
         }
       }
@@ -173,85 +125,98 @@ vascular <- function(all_cells, params, layers, center){
     # DEFINING THE CIRCULAR FRONTIERS OF CENTRAL XYLEM:
     #--------------------------------------------------
 
-    if (n_central_xylem_files > 0) {
+    # In case the central xylem has not been considered as one layer:
+    if (length(params$value[params$name == "central_xylem"]) > 0) {
+
+      # We get the expected diameter of the central xylem cell:
+      central_xyl_d <- params$value[params$name == "central_xylem" & params$type=="cell_diameter"]
+
       x_cir <- seq(-0.95,0.95,0.95/4)
       y_p <- sqrt(1-x_cir^2)
       y_m <- -sqrt(1-x_cir^2)
-      for (i_xyl in 1:nrow(all_central_xylem)) {
-        tmp <- all_central_xylem[i_xyl,]
-        cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
-        cir <- cir*abs(tmp$d*0.8)/2
-        cir$x <- cir$x + tmp$x
-        cir$y <- cir$y + tmp$y
-        xyl_central_frontier <- data.frame(angle = 0,
-                                           radius = xyl_central$r[1],
-                                           x = cir$x,
-                                           y = cir$y,
-                                           id_layer = 201,
-                                           id_cell = 1,
-                                           type = "central_xylem",
-                                           order = 1.5,
-                                           id_group = k)
-        k <- k+1
-      }
+      cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
+      cir <- cir*abs(central_xyl_d*0.8)/2
+      cir$x <- cir$x + center
+      cir$y <- cir$y + center
+      xyl_central_frontier <- data.frame(angle = 0,
+                                         radius = 0,
+                                         x = cir$x,
+                                         y = cir$y,
+                                         id_layer = 201,
+                                         id_cell = 1,
+                                         type = "central_xylem",
+                                         order = 1.1,
+                                         id_group = k)
+      k <- k+1
 
       # ADDING THE FRONTIERS OF THE CENTRAL XYLEM:
       all_cells <- all_cells[all_cells$type != "central_xylem",]
       all_cells <- rbind(all_cells, xyl_central_frontier)
-      all_cells$id_group[all_cells$type == "central_xylem"] <- all_cells$id_group[all_cells$type == "central_xylem" & all_cells$id_group != 0] + k_max_cortex
+      # all_cells$id_group[all_cells$type == "central_xylem"] <- all_cells$id_group[all_cells$type == "central_xylem" & all_cells$id_group != 0] + k_max_cortex
+      all_cells$id_group[all_cells$type == "central_xylem"] <- all_cells$id_group[all_cells$type == "central_xylem" & all_cells$id_group != 0] + k_max
       }
 
     # DEFINING THE CIRCULAR FRONTIERS OF METAXYLEM VESSELS:
     #------------------------------------------------------
 
-    # if (n_xylem_files > 0) {
-    #   x_cir <- seq(-0.95,0.95,0.95/4)
-    #   y_p <- sqrt(1-x_cir^2)
-    #   y_m <- -sqrt(1-x_cir^2)
-    #   xyl_frontier <- NULL
-    #
-    #   for (i_xyl in 1:nrow(all_xylem)) {
-    #     tmp <- all_xylem[i_xyl,]
-    #     cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
-    #     cir <- cir*abs(tmp$d*0.8)/2
-    #     cir$x <- cir$x + tmp$x
-    #     cir$y <- cir$y + tmp$y
-    #     xyl_frontier <- rbind(xyl_frontier, data.frame(angle = tmp$angle,
-    #                                                    radius = xyl$r[1],
-    #                                                    x = cir$x,
-    #                                                    y = cir$y,
-    #                                                    id_layer = 20,
-    #                                                    id_cell = 1,
-    #                                                    type = "xylem",
-    #                                                    order = 1.5,
-    #                                                    id_group = k))
-    #     # We increment the id_group:
-    #     k <- k+1
-    #   }
-    #
-    #   # We combine the metaxylem frontiers with the other, non-xylem cells:
-    #   all_cells <- all_cells[all_cells$type != "xylem",]
-    #   all_cells <- rbind(all_cells, xyl_frontier)
-    #   # We reset the id_group of metaxylem vessels:
-    #   all_cells$id_group[all_cells$type == "xylem"] <- all_cells$id_group[all_cells$type == "xylem" & all_cells$id_group != 0] + k_max_cortex
-    # }
+    if (n_xylem_files > 0) {
+      x_cir <- seq(-0.95,0.95,0.95/4)
+      y_p <- sqrt(1-x_cir^2)
+      y_m <- -sqrt(1-x_cir^2)
+      xyl_frontier <- NULL
+
+      for (i_xyl in 1:nrow(all_xylem)) {
+        tmp <- all_xylem[i_xyl,]
+        cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
+        cir <- cir*abs(tmp$d*0.8)/2
+        cir$x <- cir$x + tmp$x
+        cir$y <- cir$y + tmp$y
+        xyl_frontier <- rbind(xyl_frontier, data.frame(angle = tmp$angle,
+                                                       radius = xyl$r[1],
+                                                       x = cir$x,
+                                                       y = cir$y,
+                                                       id_layer = 20,
+                                                       id_cell = 1,
+                                                       type = "xylem",
+                                                       order = 1.5,
+                                                       id_group = k))
+        # We increment the id_group:
+        k <- k+1
+      }
+
+      # We combine the metaxylem frontiers with the other, non-xylem cells:
+      all_cells <- all_cells[all_cells$type != "xylem",]
+      all_cells <- rbind(all_cells, xyl_frontier)
+      # We reset the id_group of metaxylem vessels:
+      # all_cells$id_group[all_cells$type == "xylem"] <- all_cells$id_group[all_cells$type == "xylem" & all_cells$id_group != 0] + k_max_cortex
+      all_cells$id_group[all_cells$type == "xylem"] <- all_cells$id_group[all_cells$type == "xylem" & all_cells$id_group != 0] + k_max
+      }
 
     # CREATION OF PROTOXYLEM VESSELS:
     #--------------------------------
     if (n_proto_xylem > 0) {
-      # Protoxylem vessels are built on the outer stele rim:
-      protoxyl <- data.frame(r = max(all_cells$radius[all_cells$type == "stele"]) - (params$value[params$type == "cell_diameter" & params$name == "stele"])/2,
-                             d = params$value[params$type == "cell_diameter" & params$name == "stele"])
-      angle_seq_proto <- seq(from = 0, to = (2*pi)-(2 * pi) / n_proto_xylem, by = (2 * pi) / n_proto_xylem)
 
+      # We get the radius of metaxylem cells from the parameters:
+      if (length(params$value[params$name == "xylem" & params$type == "cell_diameter"]) == 1) {
+        radius_xylem_cell = params$value[params$name == "xylem" & params$type == "cell_diameter"]/2
+      } else {
+        radius_xylem_cell = 0.012
+      }
+      # We get the general radius of the circle around which metaxylem cells are located:
+      xylem_radius = params$value[params$name == "xylem" & params$type == "radius"]
+
+      angle_seq_proto <- seq(from = 0, to = (2*pi)-(2 * pi) / n_proto_xylem, by = (2 * pi) / n_proto_xylem)
       for(angle in angle_seq_proto){
-        x1 <- center + (protoxyl$r[1] * cos(angle))
-        y1 <- center + (protoxyl$r[1] * sin(angle))
+        x1 <- center + (xylem_radius * cos(angle))
+        y1 <- center + (xylem_radius * sin(angle))
         #Find the closest stele cell and assign it as a protoxylem vessel
         all_cells <- all_cells %>%
           mutate(type = as.character(type)) %>%
           mutate(dist_protoxyl = sqrt((x-x1)^2 + (y-y1)^2)) %>%
-          mutate(dist_protoxyl = ifelse(type == "stele", dist_protoxyl, 100)) %>%
+          mutate(dist_protoxyl = ifelse(type == "stele"
+                                        & sqrt((x-center)^2 + (y-center)^2) > sqrt((x1-center)^2 + (y1-center)^2) + 0.5*radius_xylem_cell,
+                                        dist_protoxyl,
+                                        100)) %>%
           mutate(type = ifelse(dist_protoxyl == min(dist_protoxyl), "xylem", type))
       }
 
@@ -264,12 +229,6 @@ vascular <- function(all_cells, params, layers, center){
     # PHLOEM CREATION & POSITIONNING:
     #--------------------------------
 
-    # We get the fraction of the radius of the stele where phloem cells will be located in circle:
-    if (length(params$value[params$name == "phloem" & params$type == "fraction_of_stele_radius"]) == 1) {
-      fraction_of_stele_radius = params$value[params$name == "phloem" & params$type == "fraction_of_stele_radius"]
-    } else {
-      fraction_of_stele_radius = 0.75
-    }
     # We get the radius of phloem cells from the parameters:
     if (length(params$value[params$name == "phloem" & params$type == "cell_diameter"]) == 1) {
       radius_phloem_cell = params$value[params$name == "phloem" & params$type == "cell_diameter"]/2
@@ -292,9 +251,8 @@ vascular <- function(all_cells, params, layers, center){
     if (n_phloem_files > 0) {
 
       # We define the positions of the center of a phloem cell within the stele:
-      phl <- data.frame(r = (params$value[params$type == "layer_diameter" & params$name == "stele"])/2*fraction_of_stele_radius,
-                        # - (params$value[params$type == "cell_diameter" & params$name == "stele"])/2,
-                        d = params$value[params$type == "cell_diameter" & params$name == "stele"])
+      phl <- data.frame(r = params$value[params$name == "phloem" & params$type == "radius"],
+                        d = params$value[params$name == "phloem" & params$type == "cell_diameter"])
 
       # We will cover the position of each phloem cell according to the position of the protoxylem cells:
       angle_seq_ph <- seq(from = ((2 * pi) / n_proto_xylem ) /2,
@@ -356,14 +314,14 @@ vascular <- function(all_cells, params, layers, center){
       all_cells <- all_cells %>%
         mutate(radius = ifelse(type == "phloem", radius_phloem_cell, radius))
       all_cells <- all_cells %>%
-        mutate(radius = ifelse(type == "phloem", radius_companion_cell, radius))
+        mutate(radius = ifelse(type == "companion_cell", radius_companion_cell, radius))
 
       # REMOVING STELE CELLS INSIDE THE PHLOEM CELLS:
       # We select the group of phloem cells:
       all_phloem <- all_cells %>% filter(type == "phloem")
       # We define a coefficient by which the radius of the phloem cell is multiplied to know
       # the "safe" distance over which the center of stele cells are removed:
-      coeff=2.5
+      coeff=3
       # For each phloem cell:
       for(i in c(1:nrow(all_phloem))){
         # We refine the general table of all cells:
@@ -373,36 +331,36 @@ vascular <- function(all_cells, params, layers, center){
           filter(!((x-all_phloem$x[i])^2 + (y - all_phloem$y[i])^2 < (all_phloem$radius[i]*coeff)^2 & type == "stele"))
       }
 
-      # # MAKING CIRCULAR FRONTIER FOR PHLOEM CELLS:
-      # # We create a table defining the frontiers for each phloem cells:
-      # x_cir <- seq(-0.95,0.95,0.95/4)
-      # y_p <- sqrt(1-x_cir^2)
-      # y_m <- -sqrt(1-x_cir^2)
-      # phloem_frontier <- NULL
-      # for (i_phloem in 1:nrow(all_phloem)) {
-      #   tmp <- all_phloem[i_phloem,]
-      #   cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
-      #   cir <- cir*abs(tmp$radius*0.5)/2
-      #   cir$x <- cir$x + tmp$x
-      #   cir$y <- cir$y + tmp$y
-      #   phloem_frontier <- rbind(phloem_frontier, data.frame(angle = tmp$angle,
-      #                                                        radius = phl$r[1],
-      #                                                        x = cir$x,
-      #                                                        y = cir$y,
-      #                                                        id_layer = 202,
-      #                                                        id_cell = 1,
-      #                                                        type = "phloem",
-      #                                                        order = 1.5,
-      #                                                        id_group = k))
-      #   # We increment the id_group:
-      #   k <- k + 1
-      # }
-      #
-      # # add phl frontier
-      # all_cells <- all_cells[all_cells$type != "phloem",]
-      # all_cells <- rbind(all_cells, phloem_frontier)
-      # all_cells$id_group[all_cells$type == "phloem"] <- all_cells$id_group[all_cells$type == "phloem" & all_cells$id_group != 0] + k_max_cortex
+      # MAKING CIRCULAR FRONTIER FOR PHLOEM CELLS:
+      # We create a table defining the frontiers for each phloem cells:
+      x_cir <- seq(-0.95,0.95,0.95/4)
+      y_p <- sqrt(1-x_cir^2)
+      y_m <- -sqrt(1-x_cir^2)
+      phloem_frontier <- NULL
+      for (i_phloem in 1:nrow(all_phloem)) {
+        tmp <- all_phloem[i_phloem,]
+        cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
+        cir <- cir*abs(tmp$radius*0.5)/2
+        cir$x <- cir$x + tmp$x
+        cir$y <- cir$y + tmp$y
+        phloem_frontier <- rbind(phloem_frontier, data.frame(angle = tmp$angle,
+                                                             radius = phl$r[1],
+                                                             x = cir$x,
+                                                             y = cir$y,
+                                                             id_layer = 202,
+                                                             id_cell = 1,
+                                                             type = "phloem",
+                                                             order = 1.5,
+                                                             id_group = k))
+        # We increment the id_group:
+        k <- k + 1
+      }
 
+      # add phl frontier
+      all_cells <- all_cells[all_cells$type != "phloem",]
+      all_cells <- rbind(all_cells, phloem_frontier)
+      # all_cells$id_group[all_cells$type == "phloem"] <- all_cells$id_group[all_cells$type == "phloem" & all_cells$id_group != 0] + k_max_cortex
+      all_cells$id_group[all_cells$type == "phloem"] <- all_cells$id_group[all_cells$type == "phloem" & all_cells$id_group != 0] + k_max
     }
 
   # CASE 2: DICOT PLANT
@@ -531,7 +489,7 @@ vascular <- function(all_cells, params, layers, center){
     # filter(!duplicated(angle), !duplicated(radius))
     all_cells <- all_cells[all_cells$type != "xylem",]
 
-    # Make circular frontier for xylem
+    # Make circular frontier for metaxylem:
     x_cir <- seq(-0.95,0.95,0.95/4)
     y_p <- sqrt(1-x_cir^2)
     y_m <- -sqrt(1-x_cir^2)
@@ -555,7 +513,8 @@ vascular <- function(all_cells, params, layers, center){
       k <- k + 1
     }
     all_cells <- rbind(all_cells, xyl_frontier)
-    all_cells$id_group[all_cells$type == "xylem"] <- all_cells$id_group[all_cells$type == "xylem" & all_cells$id_group != 0] + k_max_cortex
+    # all_cells$id_group[all_cells$type == "xylem"] <- all_cells$id_group[all_cells$type == "xylem" & all_cells$id_group != 0] + k_max_cortex
+    all_cells$id_group[all_cells$type == "xylem"] <- all_cells$id_group[all_cells$type == "xylem" & all_cells$id_group != 0] + k_max
 
     if(length(params$value[params$name == "pith" & params$type == "layer_diameter"]) > 0){
       all_cells <- make_pith(all_cells, params, center)

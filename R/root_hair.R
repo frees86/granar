@@ -18,6 +18,10 @@ root_hair <- function(rs1, params, center){
   len_hair <- params$value[params$name == "hair" & params$type == "length"]
   hair_r <- params$value[params$name == "epidermis" & params$type == "cell_diameter"]/2
 
+  # We set the random seed:
+  seed <- params$value[params$name == "randomness" & params$type == "seed"]
+  set.seed(seed)
+
   # existing contition
   if(length(n_hair) != 0){
     x0 <- center

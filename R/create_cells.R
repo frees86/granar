@@ -9,7 +9,9 @@
 #' # all_cells = create_cells(all_layers, random_fact)
 #'
 
-create_cells <- function(all_layers, random_fact){
+create_cells <- function(all_layers, random_fact, random_seed=1){
+
+  set.seed(2)
 
   center <- max(all_layers$radius)
   all_cells <- NULL

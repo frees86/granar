@@ -31,9 +31,10 @@ rondy_cortex <- function(params, all_cells, center){
   }else{scaling <- 0.95}
 
 
-  if(length(all_cells$id_group[all_cells$type == "xylem"]) > 0){
-    k_max_xylem <- max(all_cells$id_group[all_cells$type == "xylem"])
-  }else{k_max_xylem <- 0}
+  # if(length(all_cells$id_group[all_cells$type == "xylem"]) > 0){
+  #   k_max_xylem <- max(all_cells$id_group[all_cells$type == "xylem"])
+  # }else{k_max_xylem <- 0}
+  k_max <- max(all_cells$id_group)
 
   ctess <- deldir(all_cortex$x, all_cortex$y, digits = 8)
   idc <- unique(all_cortex$id_cell)
@@ -131,7 +132,8 @@ rondy_cortex <- function(params, all_cells, center){
     select(-euc)
 
   all_cells <- rbind(all_cells[all_cells$type != "cortex",], cor_frontier)
-  all_cells$id_group[all_cells$type == "cortex"] <- all_cells$id_group[all_cells$type == "cortex" & all_cells$id_group != 0] + k_max_xylem
+  # all_cells$id_group[all_cells$type == "cortex"] <- all_cells$id_group[all_cells$type == "cortex" & all_cells$id_group != 0] + k_max_xylem
+  all_cells$id_group[all_cells$type == "cortex"] <- all_cells$id_group[all_cells$type == "cortex"] + k_max
   all_cells <- rbind(all_cells, all_inter)
 
   # reset the cell ids

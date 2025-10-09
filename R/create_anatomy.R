@@ -65,11 +65,29 @@ create_anatomy <- function(path = NULL,  # path to xml file
     }
   }
 
-  # We set initial time
+  # If the parameters do not contain information about the radius of the stele, we add it:
+  if (length(params$value[params$name == "stele" & params$type == "radius"])==0) {
+    if (length(params$value[params$name == "central_xylem" & params$type == "cell_diameter"])==1) {
+      central_xylem_radius <- params$value[params$name == "central_xylem" & params$type == "cell_diameter"]/2
+    } else {
+      central_xylem_radius <- 0
+    }
+    stele_cell_radius <- params$value[params$name == "stele" & params$type == "cell_diameter"]
+    stele_layers <- params$value[params$name == "stele" & params$type == "n_layers"]
+    stele_radius <- central_xylem_radius + (stele_cell_radius*2 + 1) * stele_layers
+    params <- rbind(params, data.frame(name = "stele",
+                                      type = "radius",
+                                      value = stele_radius))
+  }
+
+  # We set initial time:
   t_1 <- Sys.time()
   t1 <- proc.time()
   # We set the random factor:
-  random_fact <- params$value[params$name == "randomness"] / 10 * params$value[params$name == "stele" & params$type == "cell_diameter"]
+  random_fact <- params$value[params$name == "randomness" & params$type == "intensity"] / 10 * params$value[params$name == "stele" & params$type == "cell_diameter"]
+  # We set the random seed:
+  seed <- params$value[params$name == "randomness" & params$type == "seed"]
+  # We set the proportion of aerenchyma:
   proportion_aerenchyma <- params$value[params$name == "aerenchyma" & params$type == "proportion"]
 
   # CREATING THE CENTERS OF THE CELLS:
@@ -77,18 +95,18 @@ create_anatomy <- function(path = NULL,  # path to xml file
 
   # We create tables containing the information of each cell layer to be drawn:
   data_list <- cell_layer(params)
-  layers <- data_list$layers # layers: cell_type, diameter, n_layer, order
+  layers <- data_list$layers # layers: cell_type, diameter, n_layers, order
   all_layers <- data_list$all_layers # expand layers, with e.g. the number of cells per layer and the radius
 
   # The x-coordinate and y-coordinate of the center of the cross section will be identical.
   # They are defined as the highest radius of the layers calculated above:
   center <- max(all_layers$radius)
 
-  # We get the time sed for creating layers:
+  # We get the time used for creating layers:
   t2 <- proc.time()
 
   # We set the center of each cell:
-  all_cells <- create_cells(all_layers, random_fact)
+  all_cells <- create_cells(all_layers, random_fact, random_seed=seed)
   # We get a summary of cells:
   summary_cells <- plyr::ddply(all_cells, plyr::.(type), summarise, n_cells = length(angle))
   # We relabel all cortex-related cells as "cortex":
@@ -101,11 +119,11 @@ create_anatomy <- function(path = NULL,  # path to xml file
     all_cells <- make_pith(all_cells, params, center)
   }
 
-  # Addition of intercellular space and reshape cortex layers
-  # Sub optimal process, may take a while
-  if(length(params$value[params$name =="inter_cellular_space"]) > 0){
-    all_cells <- rondy_cortex(params, all_cells, center)
-  }
+  # # Addition of intercellular space and reshape cortex layers
+  # # (Sub optimal process, may take a while)
+  # if(length(params$value[params$name =="inter_cellular_space"]) > 0){
+  #   all_cells <- rondy_cortex(params, all_cells, center)
+  # }
 
   # We get the vascular system inside the stele:
   if(verbatim) message("Add vascular elements")
@@ -131,26 +149,166 @@ create_anatomy <- function(path = NULL,  # path to xml file
   # PERFORMING THE TESSELATION TO GET THE CELL WALLS:
   ###################################################
 
-  # OPTION WITH WEIGHTED VORONOI (Apollonius package):
-  # We create a numeric matrix with only the x and y coordinates of the cell centers:
-  sites = NULL
-  for (i in seq(1,length(all_cells$x))) {
-    sites <- rbind(sites, c(all_cells$x[i], all_cells$y[i]))
-  }
-  # We create a numeric vector containing only the radius of the corresponding cells:
-  radii <- all_cells %>%
-    mutate(cell_radius = case_when(type=="cortex" ~ 1.0,
-                                   .default = 1.0)) %>%
-    pull(cell_radius)
-  apo <- Apollonius(sites, radii)
-  View(apo)
+  # # OPTION WITH WEIGHTED VORONOI (Apollonius package):
+  # # We create a numeric matrix with only the x and y coordinates of the cell centers:
+  # sites = NULL
+  # for (i in seq(1,length(all_cells$x))) {
+  #   sites <- rbind(sites, c(all_cells$x[i], all_cells$y[i]))
+  # }
+  # # We create a numeric vector containing only the radius of the corresponding cells:
+  # radii <- all_cells %>%
+  #   mutate(cell_radius = case_when(type=="cortex" ~ 1.0,
+  #                                  .default = 1.0)) %>%
+  #   pull(cell_radius)
+  #
+  # # We perform the Apollonius diagram calculation:
+  # apo <- Apollonius(sites, radii)
+  # # plotApolloniusGraph(apo, xlab = "x", ylab = "y")
+  #
+  # sites  <- apo[["diagram"]][["sites"]]
+  # faces  <- apo[["diagram"]][["faces"]]
+  # nsites <- nrow(sites)
+  # radii  <- sites[, "weight"]
+  # single_points <- apo[["graph"]][["sites"]]
+  # edges  <- apo[["graph"]][["edges"]]
+  # hsegments <- edges[["segments"]]
+  # hrays     <- edges[["rays"]]
+  #
+  # sites <- as.data.frame(sites)
+  # # sites <- all_cells %>% select(x,y)
+  #
+  # # View(apo)
+  # # View(sites)
+  # # View(hsegments)
+  #
+  # # Defining limits for the plot:
+  # x <- extendrange(sites[, "x"]) # This extends the range by a small fraction
+  # y <- extendrange(sites[, "y"]) # This extends the range by a small fraction
+  # limits <- c(min(x[1L], y[1L]), max(x[2L], y[2L]))
+  # # Plotting:
+  # plot(NULL, xlim = limits, ylim = limits, asp = 1)
+  # for(i in seq_along(hsegments)) {
+  #   # print(hsegments[[i]])
+  #   lines(hsegments[[i]], col="black", lwd = 2)
+  #   points(sites$x[i], sites$y[i], pch=19, cex=0.2)
+  # }
+  #
+  # # We create a new dataframe "segments12" that will contain four columns x1, y1, x2, y2:
+  # segments12 = data.frame(matrix(nrow = length(hsegments), ncol = 5))
+  # col_names= c("x1","y1","x2","y2","id_site")
+  # colnames(segments12) = col_names
+  # # We create a new dataframe "segments" that will contain columns x and y only:
+  # segments = data.frame(matrix(nrow = length(hsegments)*2, ncol = 3))
+  # col_names= c("x","y","id_site")
+  # colnames(segments) = col_names
+  #
+  # # Initialization:
+  # j <- 1
+  # k <- 1
+  # id_site <- 1
+  # # For each line of hsegments:
+  # for (i in seq(1,length(hsegments))) {
+  #   # Implementing the four-column table:
+  #   segments12$x1[i] = hsegments[[i]][1][1]
+  #   segments12$y1[i] = hsegments[[i]][3][1]
+  #   segments12$x2[i] = hsegments[[i]][2][1]
+  #   segments12$y2[i] = hsegments[[i]][4][1]
+  #   # segments12$id_site[i] = id_site
+  #   # Implementing the two-column table:
+  #   segments$x[j] = hsegments[[i]][1][1]
+  #   segments$y[j] = hsegments[[i]][3][1]
+  #   segments$x[j+1] = hsegments[[i]][2][1]
+  #   segments$y[j+1] = hsegments[[i]][4][1]
+  #   # segments$id_site[j] = id_site
+  #   # segments$id_site[j+1] = id_site
+  #   j <- j+2
+  #   # k <- k+1
+  #   # if (k>3) {
+  #   #   k <-1
+  #   #   id_site <- id_site + 1
+  #   # }
+  # }
+  #
+  # angle <- function(dir1_x1, dir1_y1, dir1_x2, dir1_y2,
+  #                   dir2_x1, dir2_y1, dir2_x2, dir2_y2) {
+  #
+  #   print("Coucou!")
+  #
+  # }
+  #
+  #
+  # # single_points = segments12 %>% mutate(x=x1, y=y1) %>% select(x,y) %>% slice(1)
+  # # j <-2
+  # # # For each line of hsegments:
+  # # for (i in seq(1,length(hsegments))) {
+  # #   starting_point <- segments12 %>% mutate(x=x1, y=y1) %>% select(x,y) %>% slice(i)
+  # #   ending_point <- segments12 %>% mutate(x=x2, y=y2) %>% select(x,y) %>% slice(i)
+  # #   starting_is_in_list <- paste(starting_point, collapse = ' ') %in% paste(single_points$x, single_points$y)
+  # #   ending_is_in_list <- paste(ending_point, collapse = ' ') %in% paste(single_points$x, single_points$y)
+  # #   if (!starting_is_in_list) {
+  # #     print("Trying...")
+  # #     print(starting_point$x[1])
+  # #     single_points <- rbind(single_points, starting_point)
+  # #     j <- j+1
+  # #   }
+  # #   if (!ending_is_in_list) {
+  # #     print("Trying...")
+  # #     print(ending_point$x[1])
+  # #     single_points <- rbind(single_points, ending_point)
+  # #     j <- j+1
+  # #   }
+  # # }
+  # single_points <- as.data.frame(single_points)
+  # single_points <- single_points %>% select(-3)
+  # colnames(single_points) <- c("x", "y")
+  # View(single_points)
 
-  # Get the voronio data
+  # PERFORMING TESSELATION WITH TRADITIONAL VORONOI DIAGRAM:
+  ##########################################################
+
+  # We make sure that the table do not contain any NA in x or y:
+  initial_length = length(all_cells$x)
+  NA_cells <- all_cells %>%
+    filter(is.nan(x) | is.nan(y))
+  all_cells <- all_cells %>%
+    filter(!is.nan(x), !is.nan(y))
+  filtered_length = length(all_cells$x)
+  if (filtered_length < initial_length) {
+    message("WATCH OUT: the table 'all_cells' before tesselation contained NA!")
+    message("Here is the initial lines with NA:")
+    print(NA_cells)
+  }
+
   vtess <- deldir(all_cells$x, all_cells$y, digits = 8)
   if(is.null(vtess)){return(NULL)}
   vorono_list <- cell_voro(all_cells, vtess, center)
   all_cells <- vorono_list$all_cells
   rs2 <- vorono_list$rs2
+
+  cell_apo <- function(all_cells, vtess, center){
+
+    # Get the size of the cells
+    ids <- all_cells$id_cell
+    all_cells$area <- NA
+    all_cells$dist <- sqrt((all_cells$x - center)^2 + (all_cells$y - center)^2 )
+
+    rs <- vtess$dirsgs[vtess$dirsgs$ind1 %in% ids |
+                         vtess$dirsgs$ind2 %in% ids,]
+
+    # Get the coordinates for every nodes in the voronoi
+    rs <- rs %>% arrange(ind1)
+    rs2 <- data.frame(x = rs$x1, y=rs$y1, id_cell = rs$ind1)
+    rs2 <- rbind(rs2, data.frame(x = rs$x2, y=rs$y2, id_cell = rs$ind1))
+    rs2 <- rbind(rs2, data.frame(x = rs$x2, y=rs$y2, id_cell = rs$ind2))
+    rs2 <- rbind(rs2, data.frame(x = rs$x1, y=rs$y1, id_cell = rs$ind2))
+
+    rs2 <- merge(rs2, all_cells[,c("id_cell", "type", "area", "dist", "angle", "radius", "id_layer", "id_group")], by="id_cell")
+
+    rs2 <- rs2%>%filter(type != "outside")
+
+    return(list(all_cells = all_cells, rs2 = rs2))
+
+  }
 
   message("Tesselation has been done!")
 

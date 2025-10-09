@@ -1,26 +1,28 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 
 
 <granar>
 	
 	<!-- General parameters -->
-	<planttype param="1" />
-	<secondarygrowth param="0"/>
-	<randomness param="2" />
+	<planttype param='1' />
+	<secondarygrowth param='0'/>
+	<randomness intensity='0' seed='2'/>
 	
 	<!-- Cell layers -->
-	<stele cell_diameter="0.008" n_layers="6" layer_diameter = "0.2" order="1"/>
-	<central_xylem cell_diameter="0.070" n_files="1"/>
-	<xylem cell_diameter="0.030" n_files="6" order="1.6" ratio ="1" fraction_of_stele_radius="0.75"/>
-	<phloem cell_diameter="0.020" fraction_of_stele_radius="0.70"/>
-	<companion_cell cell_diameter="0.008" n_cells_per_phloem="2" />
-	<pericycle cell_diameter="0.02" n_layers="1" order="2"/>
-	<endodermis cell_diameter="0.02" n_layers="1" order="3"/>
-	<cortex cell_diameter="0.038" n_layers="3"  order="4"/>
-	<exodermis cell_diameter="0.030" n_layers="1" order="5"/>	
-	<epidermis cell_diameter="0.018" n_layers="1" order="6"/>
+	<central_xylem cell_diameter='0.0725' n_layers='1' n_files='1' order ='1' cell_height = '0.1' wall_thickness = '0.001' smoothness = '0' />
+	<stele cell_diameter='0.0145' n_layers='6' order='2' cell_height = '0.1' wall_thickness = '0.001' smoothness = '0' />
+	<xylem cell_diameter='0.026' n_files='6' ratio ='1' radius='0.09' cell_height = '0.1' wall_thickness = '0.001' smoothness = '0' />
+	<phloem cell_diameter='0.0187' radius='0.07' cell_height = '0.1' wall_thickness = '0.001' smoothness = '0' />
+	<companion_cell cell_diameter='0.0145' n_cells_per_phloem='2' cell_height = '0.1' wall_thickness = '0.001' smoothness = '0' />
+	<pericycle cell_diameter='0.0138' n_layers='1' order='3' cell_height = '0.1' wall_thickness = '0.001' smoothness = '0' />
+	<endodermis cell_diameter='0.022' n_layers='1' order='4' cell_height = '0.1' wall_thickness = '0.01' smoothness = '0' />
+
+	<cortex cell_diameter='0.043' n_layers='3'  order='5' cell_height = '0.1' wall_thickness = '0.001' smoothness = '1' />
+
+	<exodermis cell_diameter='0.043' n_layers='1' order='6' cell_height = '0.1' wall_thickness = '0.01' smoothness = '0' />	
+	<epidermis cell_diameter='0.0335' n_layers='1' order='7' cell_height = '0.1' wall_thickness = '0.001' smoothness = '0' />
 
 	<!-- Other cell types -->
-	<aerenchyma proportion="0" n_files="10"/>
+	<aerenchyma proportion='0' n_files='10'/>
 
 </granar>
