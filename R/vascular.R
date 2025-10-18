@@ -55,14 +55,56 @@ vascular <- function(all_cells, params, layers, center){
 
   if(plant_type == 1){
 
-    # We define the radius of the whole stele:
-    stele_radius <- params$value[params$type == "radius" & params$name == "stele"]
-
     # We initialize the id_group:
     k <- 1
 
+
+    # DEFINING THE CIRCULAR FRONTIERS OF CENTRAL XYLEM:
+    #--------------------------------------------------
+
+    # In case the central xylem has not been considered as one layer:
+    if (length(params$value[params$name == "central_xylem"]) > 0) {
+
+      # We get the expected diameter of the central xylem cell:
+      central_xyl_d <- params$value[params$name == "central_xylem" & params$type=="cell_diameter"]
+      stele_d <- params$value[params$name == "stele" & params$type=="cell_diameter"]
+
+      # x_cir <- seq(-0.95,0.95,0.95/4)
+      x_cir <- seq(-0.95,0.95,0.95/10)
+      y_p <- sqrt(1-x_cir^2)
+      y_m <- -sqrt(1-x_cir^2)
+      cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
+      cir <- cir*abs((central_xyl_d-stele_d)*0.95)/2
+      cir$x <- cir$x + center
+      cir$y <- cir$y + center
+      xyl_central_frontier <- data.frame(angle = 0,
+                                         radius = 0,
+                                         x = cir$x,
+                                         y = cir$y,
+                                         id_layer = 201,
+                                         id_cell = 1,
+                                         type = "central_xylem",
+                                         order = 1.1,
+                                         id_group = k)
+      k <- k+1
+
+      # ADDING THE FRONTIERS OF THE CENTRAL XYLEM:
+      all_cells <- all_cells[all_cells$type != "central_xylem",]
+      all_cells <- rbind(all_cells, xyl_central_frontier)
+      # all_cells$id_group[all_cells$type == "central_xylem"] <- all_cells$id_group[all_cells$type == "central_xylem" & all_cells$id_group != 0] + k_max_cortex
+      all_cells$id_group[all_cells$type == "central_xylem"] <- all_cells$id_group[all_cells$type == "central_xylem" & all_cells$id_group != 0] + k_max
+    }
+
+    # Finally, we remove the stele cells inside the perimeter of the central xylem:
+    all_cells <- all_cells %>%
+      filter(!((x-center)^2 + (y - center)^2 < (central_xyl_d/2-stele_d/2)^2
+               & type == "stele"))
+
     # DEFINING THE POSITION OF METAXYLEM VESSELS:
     #--------------------------------------------
+
+    # We get the radius of stele cells from the parameters:
+    stele_d <- params$value[params$name == "stele" & params$type=="cell_diameter"]
 
     # We get the radius of xylem cells from the parameters:
     if (length(params$value[params$name == "xylem" & params$type == "cell_diameter"]) == 1) {
@@ -112,55 +154,20 @@ vascular <- function(all_cells, params, layers, center){
       }
 
       # Finally, we remove the stele cells inside the perimeter of metaxylem vessels:
-      coefficient = 1.25
       if (!is.null(all_xylem)) {
         for(i in c(1:nrow(all_xylem))){
           all_cells <- all_cells %>%
-            filter(!((x-all_xylem$x[i])^2 + (y - all_xylem$y[i])^2 < (all_xylem$d[i]/coefficient)^2
+            filter(!((x-all_xylem$x[i])^2 + (y - all_xylem$y[i])^2 < (all_xylem$d[i]/2-stele_d/2)^2
                      & type == "stele"))
         }
       }
     }
 
-    # DEFINING THE CIRCULAR FRONTIERS OF CENTRAL XYLEM:
-    #--------------------------------------------------
-
-    # In case the central xylem has not been considered as one layer:
-    if (length(params$value[params$name == "central_xylem"]) > 0) {
-
-      # We get the expected diameter of the central xylem cell:
-      central_xyl_d <- params$value[params$name == "central_xylem" & params$type=="cell_diameter"]
-
-      x_cir <- seq(-0.95,0.95,0.95/4)
-      y_p <- sqrt(1-x_cir^2)
-      y_m <- -sqrt(1-x_cir^2)
-      cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
-      cir <- cir*abs(central_xyl_d*0.8)/2
-      cir$x <- cir$x + center
-      cir$y <- cir$y + center
-      xyl_central_frontier <- data.frame(angle = 0,
-                                         radius = 0,
-                                         x = cir$x,
-                                         y = cir$y,
-                                         id_layer = 201,
-                                         id_cell = 1,
-                                         type = "central_xylem",
-                                         order = 1.1,
-                                         id_group = k)
-      k <- k+1
-
-      # ADDING THE FRONTIERS OF THE CENTRAL XYLEM:
-      all_cells <- all_cells[all_cells$type != "central_xylem",]
-      all_cells <- rbind(all_cells, xyl_central_frontier)
-      # all_cells$id_group[all_cells$type == "central_xylem"] <- all_cells$id_group[all_cells$type == "central_xylem" & all_cells$id_group != 0] + k_max_cortex
-      all_cells$id_group[all_cells$type == "central_xylem"] <- all_cells$id_group[all_cells$type == "central_xylem" & all_cells$id_group != 0] + k_max
-      }
-
     # DEFINING THE CIRCULAR FRONTIERS OF METAXYLEM VESSELS:
     #------------------------------------------------------
 
     if (n_xylem_files > 0) {
-      x_cir <- seq(-0.95,0.95,0.95/4)
+      x_cir <- seq(-0.95,0.95,0.95/10)
       y_p <- sqrt(1-x_cir^2)
       y_m <- -sqrt(1-x_cir^2)
       xyl_frontier <- NULL
@@ -168,7 +175,7 @@ vascular <- function(all_cells, params, layers, center){
       for (i_xyl in 1:nrow(all_xylem)) {
         tmp <- all_xylem[i_xyl,]
         cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
-        cir <- cir*abs(tmp$d*0.8)/2
+        cir <- cir*abs(tmp$d - stele_d)/2
         cir$x <- cir$x + tmp$x
         cir$y <- cir$y + tmp$y
         xyl_frontier <- rbind(xyl_frontier, data.frame(angle = tmp$angle,
@@ -209,11 +216,11 @@ vascular <- function(all_cells, params, layers, center){
       for(angle in angle_seq_proto){
         x1 <- center + (xylem_radius * cos(angle))
         y1 <- center + (xylem_radius * sin(angle))
-        #Find the closest stele cell and assign it as a protoxylem vessel
+        #Find the closest pericycle cell and assign it as a protoxylem vessel
         all_cells <- all_cells %>%
           mutate(type = as.character(type)) %>%
           mutate(dist_protoxyl = sqrt((x-x1)^2 + (y-y1)^2)) %>%
-          mutate(dist_protoxyl = ifelse(type == "stele"
+          mutate(dist_protoxyl = ifelse(type == "pericycle"
                                         & sqrt((x-center)^2 + (y-center)^2) > sqrt((x1-center)^2 + (y1-center)^2) + 0.5*radius_xylem_cell,
                                         dist_protoxyl,
                                         100)) %>%
@@ -256,7 +263,7 @@ vascular <- function(all_cells, params, layers, center){
 
       # We will cover the position of each phloem cell according to the position of the protoxylem cells:
       angle_seq_ph <- seq(from = ((2 * pi) / n_proto_xylem ) /2,
-                          to = (2*pi),
+                          to = (2 * pi),
                           by = (2 * pi) / n_proto_xylem)
 
       # For each new phloem cell:
@@ -269,7 +276,7 @@ vascular <- function(all_cells, params, layers, center){
         # We find the stele cell closest to the target position and assign it to a phloem vessel:
         all_cells <- all_cells %>%
           mutate(type = as.character(type)) %>%
-          # We compute the distance of each cell from the phloem circle:
+          # We compute the distance of each cell from the theoretical phloem cell center:
           mutate(dist_phl = sqrt((x-x1)^2 + (y-y1)^2)) %>%
           # We attribute a ridiculous value of 100 mm to dist_phl for any cell that is not a stele cell:
           mutate(dist_phl = ifelse(type == "stele",
@@ -280,16 +287,22 @@ vascular <- function(all_cells, params, layers, center){
                                "phloem", # If True, we set the cell type as "phloem"
                                type)) # If False, we keep the original cell type
 
+        # We get the actual new coordinate of the phloem cell that has just been created:
+        phloem_cell = all_cells %>%
+          filter(type=="phloem" & dist_phl==min(dist_phl))
+        x_ph = phloem_cell$x[1]
+        y_ph = phloem_cell$y[1]
+
         # COMPANION CELL TRANSFORMATION:
         # We replace the nearest stele cell by a companion cell,
         # and we repeat this for as many time as necessary for the current phloem cell:
         for (n in seq(1,n_companion_cells)){
           all_cells <- all_cells %>%
             mutate(type = as.character(type)) %>%
-            # We now attribute a ridiculous value of 100 mm to dist_phl for any cell outside the stele
-            # and for any stele cell located closer to the root center than the phloem circle:
+            # We now attribute a ridiculous value of 100 mm to dist_phl for any non-stele cell,
+            # for any stele cell located closer to the root center than the phloem cell center:
             mutate(dist_phl = ifelse(type == "stele"
-                                     & sqrt((x-center)^2 + (y-center)^2) > sqrt((x1-center)^2 + (y1-center)^2) + 0.5*radius_phloem_cell,
+                                     & sqrt((x-center)^2 + (y-center)^2) > sqrt((x_ph-center)^2 + (y_ph-center)^2) + 0.5*radius_phloem_cell,
                                      dist_phl, # If True, we keep the original value of dist_phl
                                      100)) %>% # If False, we replace dist_phl by 100
             # We replace the stele type if the distance to the phloem circle is the lowest one:
@@ -298,16 +311,42 @@ vascular <- function(all_cells, params, layers, center){
                                  type)) # If False, we keep the original cell type
             # # We move the (x,y) coordinates of the companion cell to have it closer to the phloem cell:
             # mutate(x = ifelse(type == "companion_cell",
-            #                   x + radius*sin(angle_ref)*cos(angle_ref) - radius_companion_cell ,
+            #                   x + radius*sin(angle)*cos(angle) - radius_companion_cell ,
             #                   x)) %>%
             # mutate(y = ifelse(type == "companion_cell",
-            #                   y - radius*(sin(angle_ref))^2 - radius_companion_cell,
+            #                   y - radius*(sin(angle))^2 - radius_companion_cell,
             #                   y))
         }
-      }
 
-      # Eventually, we remove the intermediary variable dist_phl:
-      all_cells <- all_cells %>% select(-dist_phl)
+        # We select the companion cells:
+        companion_cells <- all_cells %>%
+          select(type, id_cell, x, y, radius) %>%
+          filter(type=="companion_cell")
+
+        # We get the direction coefficient for the axis formed by the section center and the phloem cell:
+        m_ph = (y_ph - center) / (x_ph - center)
+        for (i in seq(1,nrow(companion_cells))) {
+          m_cc = (companion_cells$y[i] - y_ph)/(companion_cells$x[i] - x_ph)
+          alpha = atan(abs((m_cc-m_ph)/(1+m_cc*m_ph)))
+          x = companion_cells$x[i] + companion_cells$radius[i]*sin(alpha)*cos(alpha)
+          y = companion_cells$y[i] - companion_cells$radius[i]*(sin(alpha))^2
+          companion_cells$x_new[i] = x
+          companion_cells$y_new[i] = y
+        }
+      }
+      # all_cells <- full_join(all_cells, companion_cells)
+      # View(all_cells)
+      #
+      # all_cells <- all_cells %>%
+      #   mutate(x = ifelse(type=="companion_cell",
+      #                     x_new,
+      #                     x),
+      #          y = ifelse(type=="companion_cell",
+      #                     y_new,
+      #                     y))
+      # # Eventually, we remove the intermediary variables:
+      # all_cells <- all_cells %>% select(-c(dist_phl, x_new, y_new))
+      all_cells <- all_cells %>% select(-c(dist_phl))
 
       # ADJUSTING THE RADIUS OF PHLOEM CELLS:
       # We adjust the radius of the phloem cells and companion cells:
@@ -319,16 +358,13 @@ vascular <- function(all_cells, params, layers, center){
       # REMOVING STELE CELLS INSIDE THE PHLOEM CELLS:
       # We select the group of phloem cells:
       all_phloem <- all_cells %>% filter(type == "phloem")
-      # We define a coefficient by which the radius of the phloem cell is multiplied to know
-      # the "safe" distance over which the center of stele cells are removed:
-      coeff=3
       # For each phloem cell:
       for(i in c(1:nrow(all_phloem))){
         # We refine the general table of all cells:
         all_cells <- all_cells %>%
           # We remove the stele cells, in case the distance between their center
           # and the center of the current phloem cell is lower than the radius of the phloem cell:
-          filter(!((x-all_phloem$x[i])^2 + (y - all_phloem$y[i])^2 < (all_phloem$radius[i]*coeff)^2 & type == "stele"))
+          filter(!((x-all_phloem$x[i])^2 + (y - all_phloem$y[i])^2 < (all_phloem$radius[i] - stele_d/2)^2 & type == "stele"))
       }
 
       # MAKING CIRCULAR FRONTIER FOR PHLOEM CELLS:
@@ -340,7 +376,7 @@ vascular <- function(all_cells, params, layers, center){
       for (i_phloem in 1:nrow(all_phloem)) {
         tmp <- all_phloem[i_phloem,]
         cir <- tibble(x = rep(x_cir,2), y = c(y_p,y_m))
-        cir <- cir*abs(tmp$radius*0.5)/2
+        cir <- cir*abs(tmp$radius)/2
         cir$x <- cir$x + tmp$x
         cir$y <- cir$y + tmp$y
         phloem_frontier <- rbind(phloem_frontier, data.frame(angle = tmp$angle,

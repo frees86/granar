@@ -33,7 +33,8 @@ create_cells <- function(all_layers, random_fact, random_seed=1){
     }else if(all_layers$name[i] == "stele"){
       x <- center + (radius * cos(angles)) + stats::runif(all_layers$n_cell[i], -random_fact, random_fact)#* runif(all_layers$n_cell[i], 1-(random_fact*2), 1+(random_fact*2))
       y <- center + (radius * sin(angles)) + stats::runif(all_layers$n_cell[i], -random_fact, random_fact)
-    }else if(substr(all_layers$name[i], 1,6) == "cortex"){
+    # }else if(substr(all_layers$name[i], 1,6) == "cortex"){
+    }else if(grepl("cortex", all_layers$name[i])){
       x <- center + (radius * cos(angles)) + stats::runif(all_layers$n_cell[i], -random_fact*3, random_fact*3)#* runif(all_layers$n_cell[i], 1-(random_fact*2), 1+(random_fact*2))
       y <- center + (radius * sin(angles)) + stats::runif(all_layers$n_cell[i], -random_fact*3, random_fact*3)##* runif(all_layers$n_cell[i], 1-(random_fact*2), 1+(random_fact*2))
     }else{

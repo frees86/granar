@@ -22,7 +22,8 @@ plot_anatomy <- function(sim=NULL,
                          leg = T,
                          apo_bar = 0,
                          phi_thck = 0,
-                         plotting_cell_centers=FALSE){
+                         plotting_cell_centers=FALSE,
+                         hidden_cell_layers=c()){
 
 
   if(col == "segment"){
@@ -94,8 +95,19 @@ plot_anatomy <- function(sim=NULL,
     #         axis.title.x=element_blank(),
     #         axis.title.y=element_blank())
 
+    # If one or more layers are to be removed:
+    if (length(hidden_cell_layers)>0) {
+      # For each cell layer to hide, we remove it from the table:
+      for (layer in hidden_cell_layers) {
+        df <- sim$nodes %>%
+          filter(type != layer)
+      }
+    } else {
+        df <- sim$nodes
+    }
+
     # We modify the original dataframe for plotting purposes:
-    df <- sim$nodes %>%
+    df <- df %>%
       # We rename the type into "Tissue" with nicer labels for the legend:
       mutate(Tissue = case_when(type == "central_xylem" ~ "Central xylem",
                                 type == "xylem" ~ "Xylem",
@@ -159,15 +171,17 @@ plot_anatomy <- function(sim=NULL,
             axis.title.y=element_blank()) +
       theme(legend.position="left")
 
+    pl <- pl +
+      # We add a spatial scale at the bottom of the graph:
+      geom_segment(aes(x = 0, y = 0, xend = 0.1, yend = 0), size=1) +
+      geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +
+      geom_segment(aes(x = 0.1, y = -0.005, xend = 0.1, yend = 0.005), size=1) +
+      annotate("text", x=0.05, y=0.020, label= "100 µm", size=3)
+
     if (plotting_cell_centers) {
       pl <- pl +
         # We add central points corresponding to the center of each cell:
-        geom_point(aes(mx,my), size=0.5) +
-        # We add a spatial scale at the bottom of the graph:
-        geom_segment(aes(x = 0, y = 0, xend = 0.1, yend = 0), size=1) +
-        geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +
-        geom_segment(aes(x = 0.1, y = -0.005, xend = 0.1, yend = 0.005), size=1) +
-        annotate("text", x=0.05, y=0.020, label= "100 µm", size=3)
+        geom_point(aes(mx,my), size=0.5)
     }
 
     if(!col %in% c("type", "cell_group")){

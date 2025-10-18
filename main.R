@@ -85,18 +85,10 @@ source(paste0(main_path,'R/write_geo.R'))
 # FUNCTION FOR SHRINKING ONE CELL ACCORDING TO THE THICKENING OF THE CELL WALL:
 shrinking_one_cell <- function(.data) {
 
-  # # Example of a simple dataframe where coordinates have to get closer to the middle:
-  # x <- c(0,1,1,0)
-  # y <- c(0,0,1,1)
-  # mx <- c(0.5,0.5,0.5,0.5)
-  # my <- c(0.5,0.5,0.5,0.5)
-  # m <- cbind(x,y,mx,my)
-  # df <- as.data.frame(m)
-  # df$x_new <- df$x
-  # df$y_new <- df$y
-  # df$angle <- df$x
-
   df <- .data
+  if (length(df$x)==0 | length(df$y)==0) {
+    message("PROBLEM: no cell can be shrinked!")
+  }
 
   # We cover each coordinate of the wall of the current cell:
   for (i in seq(1,length(df$x))) {
@@ -107,22 +99,27 @@ shrinking_one_cell <- function(.data) {
     my=df$my[i]
     wall_thickness = df$wall_thickness[i]
 
-    if (x>mx & y>my) {
-      angle = atan((y-my)/(x-mx))
-      df$x[i] = x - cos(angle)*wall_thickness/2
-      df$y[i] = df$y[i] - sin(angle)*wall_thickness/2
-    } else if (x<mx & y>my) {
-      angle = atan((y-my)/(mx-x))
-      df$x[i] = x + cos(angle)*wall_thickness/2
-      df$y[i] = df$y[i] - sin(angle)*wall_thickness/2
-    } else if (x>mx & y<my) {
-      angle = atan((my-y)/(x-mx))
-      df$x[i] = x - cos(angle)*wall_thickness/2
-      df$y[i] = df$y[i] + sin(angle)*wall_thickness/2
-    } else if (x<mx & y<my) {
-      angle = atan((my-y)/(mx-x))
-      df$x[i] = x + cos(angle)*wall_thickness/2
-      df$y[i] = df$y[i] + sin(angle)*wall_thickness/2
+    if (is.na(x) | is.na(y) | is.na(mx) | is.na(my)) {
+      message("PROBLEM: this cell cannot be shrinked!")
+      print(df)
+    } else {
+      if (x>mx & y>my) {
+        angle = atan((y-my)/(x-mx))
+        df$x[i] = x - cos(angle)*wall_thickness/2
+        df$y[i] = df$y[i] - sin(angle)*wall_thickness/2
+      } else if (x<mx & y>my) {
+        angle = atan((y-my)/(mx-x))
+        df$x[i] = x + cos(angle)*wall_thickness/2
+        df$y[i] = df$y[i] - sin(angle)*wall_thickness/2
+      } else if (x>mx & y<my) {
+        angle = atan((my-y)/(x-mx))
+        df$x[i] = x - cos(angle)*wall_thickness/2
+        df$y[i] = df$y[i] + sin(angle)*wall_thickness/2
+      } else if (x<mx & y<my) {
+        angle = atan((my-y)/(mx-x))
+        df$x[i] = x + cos(angle)*wall_thickness/2
+        df$y[i] = df$y[i] + sin(angle)*wall_thickness/2
+      }
     }
   }
   return(df)
@@ -152,7 +149,8 @@ shrinking_all_cells <- function(cells) {
   # We apply the function 'smoothing_one_cell' to all cells in the simulation:
   new_cells <- cells %>%
     group_by(id_cell) %>%
-    do(data.frame(shrinking_one_cell(.)))
+    do(data.frame(shrinking_one_cell(.))) %>%
+    drop_na()
 
   return(new_cells)
 }
@@ -276,6 +274,10 @@ smoothing_all_cells <- function(sim) {
   # And we combine this summary with the new table containing the x,y coordinates of the points of smoothened cells:
   new_cells <- right_join(summary, smoothened_cells)
 
+  # # We make sure that the smoothened new cells do not contain additional types as the original simulated cells:
+  # original_types <- sim$nodes %>% select(type, smoothness)
+  # new_cells <- left_join(original_types, new_cells)
+
   return(new_cells)
 }
 
@@ -338,9 +340,11 @@ computing_BRIDGES_outputs <- function(sim, params) {
     area = areapl(m)
     return(area)
   }
+
   # We now create a summary of the simulation results, calculating the cross section area of each cell:
   summary_cells <- sim$nodes %>%
     group_by(type, id_cell) %>%
+    drop_na() %>%
     do(data.frame(cell_area=polygon_area(.)))
 
   # Computing total membrane surface and volume for each cell:
@@ -372,7 +376,7 @@ computing_BRIDGES_outputs <- function(sim, params) {
       # Reference cell wall thickness from the parameters:
       cell_wall_thickness_in_mm = mean(cell_wall_thickness_in_mm),
       # Calculated internal and external radius of the tissue layer:
-      internal_tissue_radius_in_mm = min(d_tissue_in_mm_per_section/2) - cell_diameter_in_mm/2,
+      internal_tissue_radius_in_mm = max(0, min(d_tissue_in_mm_per_section/2) - cell_diameter_in_mm/2),
       external_tissue_radius_in_mm = max(d_tissue_in_mm_per_section/2) + cell_diameter_in_mm/2,
       # Cumulated membrane length of the cells within the cross section:
       total_membrane_length_in_mm_per_section = sum(total_membrane_length_in_mm_per_cell),
@@ -432,7 +436,7 @@ computing_BRIDGES_outputs <- function(sim, params) {
 # PERFORMING THE CLASSICAL SIMULATION WITHOUT SMOOTHING OR CELL SHRINKING:
 #-------------------------------------------------------------------------
 
-# We define the input path where all parameter files are stored:
+# We define the input path where the parameter file is stored:
 input_path = paste0(main_path,"inputs/wheat_test_2.xml")
 # We load the input parameters:
 param1 <- read_param_xml(path = input_path)
@@ -462,7 +466,7 @@ sim1$nodes <- right_join(sim1$nodes, filtered_smoothness_parameters)
 
 # We now increase the thickness of the cell walls and reduce the size of the cells:
 shrinked_sim1 <- sim1
-shrinked_sim1$nodes <- shrinking_all_cells(sim1$nodes)
+shrinked_sim1$nodes <- shrinking_all_cells(sim1$nodes %>% drop_na())
 plot_anatomy(shrinked_sim1, plotting_cell_centers = TRUE)
 
 # We then smooth the new cells:
@@ -473,6 +477,11 @@ smoothened_sim1$nodes <- new_cells
 
 # We plot the new simulation outputs and record it:
 plot_anatomy(smoothened_sim1)
+tiff(filename=paste0(main_path,"outputs/Plots/plot.tiff"), height = 12, width = 16, units = 'cm', compression = "lzw", res = 300)
+plot_anatomy(smoothened_sim1)
+# # Or we plot the section without specific cell layers:
+# plot_anatomy(smoothened_sim1, hidden_cell_layers=c("epidermis"))
+dev.off()
 
 # COMPUTING INTERESTING PROPERTIES:
 #----------------------------------
