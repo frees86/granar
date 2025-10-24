@@ -22,9 +22,18 @@ plot_anatomy <- function(sim=NULL,
                          leg = T,
                          apo_bar = 0,
                          phi_thck = 0,
+                         # Option for additionally dispay cell centers:
                          plotting_cell_centers=FALSE,
-                         hidden_cell_layers=c()){
+                         # List of cell layers to be removed:
+                         hidden_cell_layers=c(),
+                         # Min and max coordinates to display:
+                         xmin=0, ymin=0,
+                         xmax=0.8, ymax=0.8,
+                         # Position of the center of the root section:
+                         xc=0.4, yc=0.4){
 
+  # DISPLAYING CELLS WITHOUT FILLING:
+  ###################################
 
   if(col == "segment"){
     pl <- ggplot()+
@@ -82,35 +91,52 @@ plot_anatomy <- function(sim=NULL,
                                     type != "aerenchyma",
                                     d < 0.4 & d > - 0.4 | d > 2.8 | d < -2.8))
     }
-  }else{
 
-    # pl <- ggplot(sim$nodes) +
-    #   geom_polygon(aes_string("x", "y", group="id_cell", fill=col), colour="white") +
-    #   theme_classic() +
-    #   coord_fixed() +
-    #   theme(axis.line=element_blank(),
-    #         axis.text.x=element_blank(),
-    #         axis.text.y=element_blank(),
-    #         axis.ticks=element_blank(),
-    #         axis.title.x=element_blank(),
-    #         axis.title.y=element_blank())
+  # NEW DISPLAY FOR BRIDGES:
+    ########################
+
+  } else {
 
     # If one or more layers are to be removed:
     if (length(hidden_cell_layers)>0) {
+      # We initialize the final dataframe to be used for plotting as the original data frame:
+      df <- sim$nodes
       # For each cell layer to hide, we remove it from the table:
       for (layer in hidden_cell_layers) {
-        df <- sim$nodes %>%
+        df <- df %>%
           filter(type != layer)
       }
     } else {
-        df <- sim$nodes
+      df <- sim$nodes
     }
+
+    # We translate the coordinates of the section so that its center fits the coordinates (xc,yc):
+    # We get the central xylem cell,
+    # whose center necessarily corresponds to the center of the root section:
+    central_xylem <- sim$nodes %>%
+      filter(type == "central_xylem")
+    # If there is a central xylem, the current center of the root section is defined accordingly:
+    if (length(central_xylem)>0) {
+      current_center_x <- central_xylem$mx[1]
+      current_center_y <- central_xylem$my[1]
+    } else {
+    # Otherwise, the center is defined as the maximal value of radius in the whole dataset:
+      current_center_x <- max(df$radius)
+      current_center_y <- max(df$radius)
+    }
+
+    df <- df %>%
+      mutate(x = x + (xc - current_center_x),
+             y = y + (yc - current_center_y),
+             mx = mx + (xc - current_center_x),
+             my = my + (yc - current_center_y))
 
     # We modify the original dataframe for plotting purposes:
     df <- df %>%
       # We rename the type into "Tissue" with nicer labels for the legend:
       mutate(Tissue = case_when(type == "central_xylem" ~ "Central xylem",
-                                type == "xylem" ~ "Xylem",
+                                type == "xylem" ~ "Metaxylem",
+                                type == "protoxylem" ~ "Protoxylem",
                                 type == "phloem" ~ "Phloem",
                                 type == "companion_cell" ~"Phloem companion cells",
                                 type == "stele" ~ "Stele parenchyma",
@@ -123,7 +149,8 @@ plot_anatomy <- function(sim=NULL,
       # We reorder the tissue levels:
       mutate(Tissue = fct_relevel(Tissue,
                                   "Central xylem",
-                                  "Xylem",
+                                  "Metaxylem",
+                                  "Protoxylem",
                                   "Phloem",
                                   "Phloem companion cells",
                                   "Stele parenchyma",
@@ -146,7 +173,8 @@ plot_anatomy <- function(sim=NULL,
       #                          .default = "white"))
     # We create a list of color attributing a color to each tissue type:
     color_attribution = c("Central xylem" = "deepskyblue3",
-                          "Xylem" = "deepskyblue2",
+                          "Metaxylem" = "deepskyblue2",
+                          "Protoxylem" = "steelblue1",
                           "Phloem" = "brown2",
                           "Phloem companion cells" = "brown1",
                           "Stele parenchyma" = "darkgoldenrod1",
@@ -158,7 +186,6 @@ plot_anatomy <- function(sim=NULL,
 
     # We create the graph with ggplot:
     pl <- ggplot(df) +
-      # geom_polygon(aes_string("x", "y", group="id_cell", fill=col), colour="white") +
       geom_polygon(aes_string("x", "y", group="id_cell", fill="Tissue"), colour="black") +
       scale_fill_manual(values = color_attribution) +
       theme_classic() +
@@ -169,28 +196,31 @@ plot_anatomy <- function(sim=NULL,
             axis.ticks=element_blank(),
             axis.title.x=element_blank(),
             axis.title.y=element_blank()) +
-      theme(legend.position="left")
+      theme(legend.position="left") +
+      xlim(xmin, xmax) +
+      ylim(ymin, ymax)
 
     pl <- pl +
       # We add a spatial scale at the bottom of the graph:
       geom_segment(aes(x = 0, y = 0, xend = 0.1, yend = 0), size=1) +
-      geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +
-      geom_segment(aes(x = 0.1, y = -0.005, xend = 0.1, yend = 0.005), size=1) +
+      # geom_segment(aes(x = 0, y = -0.005, xend = 0, yend = 0.005), size=1) +
+      # geom_segment(aes(x = 0.1, y = -0.005, xend = 0.1, yend = 0.005), size=1) +
       annotate("text", x=0.05, y=0.020, label= "100 µm", size=3)
 
+    # In case we want to visualize the original center of each cell:
     if (plotting_cell_centers) {
       pl <- pl +
         # We add central points corresponding to the center of each cell:
         geom_point(aes(mx,my), size=0.5)
     }
 
-    if(!col %in% c("type", "cell_group")){
-      pl <- pl + viridis::scale_fill_viridis()
-    }
-
-    if(!leg){
-      pl <- pl + theme(legend.position="none")
-    }
+    # if(!col %in% c("type", "cell_group")){
+    #   pl <- pl + viridis::scale_fill_viridis()
+    # }
+    #
+    # if(!leg){
+    #   pl <- pl + theme(legend.position="none")
+    # }
   }
   return(pl)
 }

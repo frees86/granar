@@ -390,14 +390,15 @@ computing_BRIDGES_outputs <- function(sim, params) {
     # We create a variable for sorting the type of cells in a specific order:
     mutate(type_order = case_when(type == "central_xylem" ~ 1,
                                   type == "xylem" ~ 2,
-                                  type == "phloem" ~ 3,
-                                  type == "companion_cell" ~ 4,
-                                  type == "stele" ~ 5,
-                                  type == "pericycle" ~ 6,
-                                  type == "endodermis" ~ 7,
-                                  type == "cortex" ~ 8,
-                                  type == "exodermis" ~ 9,
-                                  type == "epidermis" ~ 10,
+                                  type == "protoxylem" ~ 3,
+                                  type == "phloem" ~ 4,
+                                  type == "companion_cell" ~ 5,
+                                  type == "stele" ~ 6,
+                                  type == "pericycle" ~ 7,
+                                  type == "endodermis" ~ 8,
+                                  type == "cortex" ~ 9,
+                                  type == "exodermis" ~ 10,
+                                  type == "epidermis" ~ 11,
                                   .default = 100)) %>%
     # We reorganize the rows according to this specific order:
     arrange(type_order)
@@ -437,13 +438,13 @@ computing_BRIDGES_outputs <- function(sim, params) {
 #-------------------------------------------------------------------------
 
 # We define the input path where the parameter file is stored:
-input_path = paste0(main_path,"inputs/wheat_test_2.xml")
+input_path = paste0(main_path,"inputs/inputs.xml")
 # We load the input parameters:
 param1 <- read_param_xml(path = input_path)
 # We create the corresponding root anatomy:
 sim1  <- suppressWarnings(create_anatomy(parameters = param1))
 # We plot the corresponding root section with default parameters:
-suppressWarnings(plot_anatomy(sim1))
+suppressWarnings(plot_anatomy(sim1, xmin=0, ymin=0, xmax=0.8, ymax=0.8, xc=0.35, yc=0.35))
 
 # PERFORMING A NEW SIMULATION WITH SMOOTHING AND CELL SHRINKING:
 #---------------------------------------------------------------
@@ -454,7 +455,7 @@ filtered_wall_thickness_parameters <- param1 %>%
   select(-type) %>%
   dplyr::rename(type = name, wall_thickness = value)
 # We couple both tables:
-sim1$nodes <- right_join(sim1$nodes, filtered_wall_thickness_parameters)
+sim1$nodes <- left_join(sim1$nodes, filtered_wall_thickness_parameters)
 
 # We get the required smoothness from the parameters:
 filtered_smoothness_parameters <- param1 %>%
@@ -462,12 +463,24 @@ filtered_smoothness_parameters <- param1 %>%
   select(-type) %>%
   dplyr::rename(type = name, smoothness = value)
 # We couple both tables:
-sim1$nodes <- right_join(sim1$nodes, filtered_smoothness_parameters)
+sim1$nodes <- left_join(sim1$nodes, filtered_smoothness_parameters)
+
+# We make sure that values of wall_thickness and smoothness are also available for the protoxylem:
+protoxylem_wall_thickness <- filtered_wall_thickness_parameters %>%
+  filter(type=="pericycle")
+protoxylem_smoothness <- filtered_smoothness_parameters %>%
+  filter(type=="pericycle")
+sim1$nodes <- sim1$nodes %>%
+  mutate(wall_thickness = case_when(type=="protoxylem" ~ protoxylem_wall_thickness[1,2],
+                                    .default=wall_thickness),
+         smoothness = case_when(type=="protoxylem" ~ protoxylem_smoothness[1,2],
+                                .default=smoothness))
 
 # We now increase the thickness of the cell walls and reduce the size of the cells:
 shrinked_sim1 <- sim1
 shrinked_sim1$nodes <- shrinking_all_cells(sim1$nodes %>% drop_na())
-plot_anatomy(shrinked_sim1, plotting_cell_centers = TRUE)
+plot_anatomy(shrinked_sim1, plotting_cell_centers = TRUE,
+             xmin=0, ymin=0, xmax=0.8, ymax=0.8, xc=0.35, yc=0.35)
 
 # We then smooth the new cells:
 new_cells <- smoothing_all_cells(shrinked_sim1)
@@ -475,12 +488,20 @@ new_cells <- smoothing_all_cells(shrinked_sim1)
 smoothened_sim1 <- sim1
 smoothened_sim1$nodes <- new_cells
 
-# We plot the new simulation outputs and record it:
-plot_anatomy(smoothened_sim1)
-tiff(filename=paste0(main_path,"outputs/Plots/plot.tiff"), height = 12, width = 16, units = 'cm', compression = "lzw", res = 300)
-plot_anatomy(smoothened_sim1)
+# We plot the new simulation outputs:
+plot_anatomy(smoothened_sim1, xmin=0, ymin=0, xmax=0.8, ymax=0.8, xc=0.35, yc=0.35)
 # # Or we plot the section without specific cell layers:
-# plot_anatomy(smoothened_sim1, hidden_cell_layers=c("epidermis"))
+# plot_anatomy(smoothened_sim1,
+#              xmin=0, ymin=0, xmax=0.8, ymax=0.8,
+#              hidden_cell_layers=c("exodermis", "epidermis"))
+
+# We record the plot:
+tiff(filename=paste0(main_path,"outputs/Plots/plot.tiff"), height = 12, width = 16, units = 'cm', compression = "lzw", res = 300)
+plot_anatomy(smoothened_sim1, xmin=0, ymin=0, xmax=0.8, ymax=0.8, xc=0.35, yc=0.35)
+# # Or we plot the section without specific cell layers:
+# plot_anatomy(smoothened_sim1,
+#              xmin=0, ymin=0, xmax=0.8, ymax=0.8, xc=0.35, yc=0.35,
+#              hidden_cell_layers=c("exodermis", "epidermis"))
 dev.off()
 
 # COMPUTING INTERESTING PROPERTIES:

@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>	
+	
+	
+<granar>	
+	
+	<!-- General parameters -->
+	<planttype param='1' />
+	<secondarygrowth param='0' />
+	<randomness intensity='3' seed='1' />
+	
+	<!-- Cell layers -->
+	<central_xylem cell_diameter='0.0386697242286548' n_layers='1' n_files='1' order='1' cell_height='0.021830503038674' wall_thickness='0.000685287009344524' smoothness='0.5' />
+	<stele cell_diameter='0.012' n_layers='4' order='2' cell_height='0.0217530113950276' wall_thickness='0.000685287009344524' smoothness='0' />
+	<xylem cell_diameter='0.0235658483837009' n_files='6' radius='0.0648452109763979' cell_height='0.0217530113950276' wall_thickness='0.000685287009344524' smoothness='0.2' />
+	<protoxylem cell_diameter='0.00853026722844164' n_cells_per_file='1' cell_height='0.0217530113950276' wall_thickness='0.000685287009344524' smoothness='0.2' />
+	<phloem cell_diameter='0.0197182403368304' n_files='6' radius='0.0526202882868183' cell_height='0.0217530113950276' wall_thickness='0.000685287009344524' smoothness='0.2' />
+	<companion_cell cell_diameter='0.0081793933477942' n_cells_per_file='3' cell_height='0.0217530113950276' wall_thickness='0.000685287009344524' smoothness='0' />
+	<pericycle cell_diameter='0.0144269730825994' n_layers='1' order='3' cell_height='0.0252954865331492' wall_thickness='0.000685287009344524' smoothness='0.2' />
+	<endodermis cell_diameter='0.0184512092152882' n_layers='1' radius='0.0980379994475138' order='4' cell_height='0.0252954865331492' wall_thickness='0.00141910513859338' smoothness='0.2' />
+	<inner_cortex cell_diameter='0.0278827506717202' n_layers='1' order='5' cell_height='0.0216339510196823' wall_thickness='0.00102722724742937' smoothness='1' />
+	<cortex cell_diameter='0.0352337332898752' n_layers='1' order='6' cell_height='0.0179724155062155' wall_thickness='0.00102722724742937' smoothness='1' />
+	
+	<exodermis cell_diameter='0.040472580553453' n_layers='1' order='8' cell_height='0.0226884462361878' wall_thickness='0.00214953146175678' smoothness='0.5' />
+	<epidermis cell_diameter='0.0347675967044283' n_layers='1' radius='0.201461668128453' order='9' cell_height='0.0259242758701657' wall_thickness='0.00211577323421759' smoothness='0.2' />
+	
+	<!-- Other cell types -->
+	<aerenchyma proportion='0' n_files='10' />
+	
+	
+</granar>

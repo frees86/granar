@@ -25,19 +25,16 @@ vascular <- function(all_cells, params, layers, center){
   # We get the number of metaxylem files from the parameters:
   if (length(params$value[params$name == "xylem" & params$type == "n_files"]) == 1) {
     n_xylem_files = params$value[params$name == "xylem" & params$type == "n_files"]
-    n_phloem_files = n_xylem_files
   } else {
     n_xylem_files = 0
-    n_phloem_files = 0
   }
-  # We get the ratio of protoxylem to metaxylem from the parameters:
-  if (length(params$value[params$name == "xylem" & params$type == "ratio"]) == 1) {
-    proto_meta_ratio = params$value[params$name == "xylem" & params$type == "ratio"]
+
+  # We get the number of protoxylem cells to create for each metaxylem cell:
+  if (length(params$value[params$name == "protoxylem" & params$type == "n_cells_per_file"]) == 1) {
+    n_protoxylem_cells = params$value[params$name == "protoxylem" & params$type == "n_cells_per_file"]
   } else {
-    proto_meta_ratio = 1
+    n_protoxylem_cells <- 0
   }
-  # And we calculate the number of protoxylem files:
-  n_proto_xylem <- round(n_xylem_files*proto_meta_ratio)
 
   # We get the plant type from the parameters:
   plant_type <- params$value[params$name == "planttype"]
@@ -57,7 +54,6 @@ vascular <- function(all_cells, params, layers, center){
 
     # We initialize the id_group:
     k <- 1
-
 
     # DEFINING THE CIRCULAR FRONTIERS OF CENTRAL XYLEM:
     #--------------------------------------------------
@@ -201,7 +197,7 @@ vascular <- function(all_cells, params, layers, center){
 
     # CREATION OF PROTOXYLEM VESSELS:
     #--------------------------------
-    if (n_proto_xylem > 0) {
+    if (n_protoxylem_cells> 0) {
 
       # We get the radius of metaxylem cells from the parameters:
       if (length(params$value[params$name == "xylem" & params$type == "cell_diameter"]) == 1) {
@@ -211,20 +207,26 @@ vascular <- function(all_cells, params, layers, center){
       }
       # We get the general radius of the circle around which metaxylem cells are located:
       xylem_radius = params$value[params$name == "xylem" & params$type == "radius"]
-
-      angle_seq_proto <- seq(from = 0, to = (2*pi)-(2 * pi) / n_proto_xylem, by = (2 * pi) / n_proto_xylem)
+      # We get all angles corresponding to the position of the metaxylem files:
+      angle_seq_proto <- seq(from = 0, to = (2*pi)-(2 * pi) / (n_xylem_files), by = (2 * pi) / (n_xylem_files))
+      # For each metaxylem file:
       for(angle in angle_seq_proto){
+        # We get the coordinate of the metaxylem vessel:
         x1 <- center + (xylem_radius * cos(angle))
         y1 <- center + (xylem_radius * sin(angle))
-        #Find the closest pericycle cell and assign it as a protoxylem vessel
-        all_cells <- all_cells %>%
-          mutate(type = as.character(type)) %>%
-          mutate(dist_protoxyl = sqrt((x-x1)^2 + (y-y1)^2)) %>%
-          mutate(dist_protoxyl = ifelse(type == "pericycle"
-                                        & sqrt((x-center)^2 + (y-center)^2) > sqrt((x1-center)^2 + (y1-center)^2) + 0.5*radius_xylem_cell,
-                                        dist_protoxyl,
-                                        100)) %>%
-          mutate(type = ifelse(dist_protoxyl == min(dist_protoxyl), "xylem", type))
+        # For each protoxylem cell to create:
+        for (step in seq(1,n_protoxylem_cells)) {
+          # We find the closest pericycle cell and assign it to a protoxylem cell:
+          all_cells <- all_cells %>%
+            mutate(type = as.character(type)) %>%
+            mutate(dist_protoxyl = sqrt((x-x1)^2 + (y-y1)^2)) %>%
+            mutate(dist_protoxyl = ifelse(type == "pericycle"
+                                          & sqrt((x-center)^2 + (y-center)^2) > sqrt((x1-center)^2 + (y1-center)^2) + 0.5*radius_xylem_cell,
+                                          dist_protoxyl,
+                                          100)) %>%
+            mutate(type = ifelse(dist_protoxyl == min(dist_protoxyl), "protoxylem", type))
+        }
+
       }
 
       # Eventually, we remove the intermediary variable dist_protoxyl:
@@ -235,6 +237,13 @@ vascular <- function(all_cells, params, layers, center){
 
     # PHLOEM CREATION & POSITIONNING:
     #--------------------------------
+
+    # We get the number of phloem sieve tubes from the parameters:
+    if (length(params$value[params$name == "phloem" & params$type == "n_files"]) == 1) {
+      n_phloem_files = params$value[params$name == "phloem" & params$type == "n_files"]
+    } else {
+      n_phloem_files = n_xylem_files
+    }
 
     # We get the radius of phloem cells from the parameters:
     if (length(params$value[params$name == "phloem" & params$type == "cell_diameter"]) == 1) {
@@ -249,8 +258,8 @@ vascular <- function(all_cells, params, layers, center){
       radius_companion_cell = 0.006
     }
     # We get the number of companion cells to create for each phloem cell:
-    if (length(params$value[params$name == "companion_cell" & params$type == "n_cells_per_phloem"]) == 1) {
-      n_companion_cells = params$value[params$name == "companion_cell" & params$type == "n_cells_per_phloem"]
+    if (length(params$value[params$name == "companion_cell" & params$type == "n_cells_per_file"]) == 1) {
+      n_companion_cells = params$value[params$name == "companion_cell" & params$type == "n_cells_per_file"]
     } else {
       n_companion_cells = 0
     }
@@ -261,10 +270,10 @@ vascular <- function(all_cells, params, layers, center){
       phl <- data.frame(r = params$value[params$name == "phloem" & params$type == "radius"],
                         d = params$value[params$name == "phloem" & params$type == "cell_diameter"])
 
-      # We will cover the position of each phloem cell according to the position of the protoxylem cells:
-      angle_seq_ph <- seq(from = ((2 * pi) / n_proto_xylem ) /2,
+      # We will cover the position of each phloem cell:
+      angle_seq_ph <- seq(from = ((2 * pi) / n_phloem_files) /2,
                           to = (2 * pi),
-                          by = (2 * pi) / n_proto_xylem)
+                          by = (2 * pi) / n_phloem_files)
 
       # For each new phloem cell:
       for(angle in angle_seq_ph){
@@ -323,15 +332,17 @@ vascular <- function(all_cells, params, layers, center){
           select(type, id_cell, x, y, radius) %>%
           filter(type=="companion_cell")
 
-        # We get the direction coefficient for the axis formed by the section center and the phloem cell:
-        m_ph = (y_ph - center) / (x_ph - center)
-        for (i in seq(1,nrow(companion_cells))) {
-          m_cc = (companion_cells$y[i] - y_ph)/(companion_cells$x[i] - x_ph)
-          alpha = atan(abs((m_cc-m_ph)/(1+m_cc*m_ph)))
-          x = companion_cells$x[i] + companion_cells$radius[i]*sin(alpha)*cos(alpha)
-          y = companion_cells$y[i] - companion_cells$radius[i]*(sin(alpha))^2
-          companion_cells$x_new[i] = x
-          companion_cells$y_new[i] = y
+        if (nrow(companion_cells)>0) {
+          # We get the direction coefficient for the axis formed by the section center and the phloem cell:
+          m_ph = (y_ph - center) / (x_ph - center)
+          for (i in seq(1,nrow(companion_cells))) {
+            m_cc = (companion_cells$y[i] - y_ph)/(companion_cells$x[i] - x_ph)
+            alpha = atan(abs((m_cc-m_ph)/(1+m_cc*m_ph)))
+            x = companion_cells$x[i] + companion_cells$radius[i]*sin(alpha)*cos(alpha)
+            y = companion_cells$y[i] - companion_cells$radius[i]*(sin(alpha))^2
+            companion_cells$x_new[i] = x
+            companion_cells$y_new[i] = y
+          }
         }
       }
       # all_cells <- full_join(all_cells, companion_cells)
@@ -346,6 +357,7 @@ vascular <- function(all_cells, params, layers, center){
       #                     y))
       # # Eventually, we remove the intermediary variables:
       # all_cells <- all_cells %>% select(-c(dist_phl, x_new, y_new))
+
       all_cells <- all_cells %>% select(-c(dist_phl))
 
       # ADJUSTING THE RADIUS OF PHLOEM CELLS:

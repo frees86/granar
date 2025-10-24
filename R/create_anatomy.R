@@ -106,6 +106,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
   t2 <- proc.time()
 
   # We set the center of each cell:
+  message("Creating the center of cells...")
   all_cells <- create_cells(all_layers, random_fact, random_seed=seed)
   # We get a summary of cells:
   summary_cells <- plyr::ddply(all_cells, plyr::.(type), summarise, n_cells = length(angle))
@@ -126,6 +127,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
   # }
 
   # We get the vascular system inside the stele:
+  message("Creating vascular elements...")
   if(verbatim) message("Add vascular elements")
   # Case 1: No secondary growth
   if(length(params$value[params$name == "secondarygrowth"]) ==  0){
@@ -279,6 +281,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
     print(NA_cells)
   }
 
+  message("Performing tesselation...")
   vtess <- deldir(all_cells$x, all_cells$y, digits = 8)
   if(is.null(vtess)){return(NULL)}
   vorono_list <- cell_voro(all_cells, vtess, center)
@@ -310,7 +313,7 @@ create_anatomy <- function(path = NULL,  # path to xml file
 
   }
 
-  message("Tesselation has been done!")
+  message("   > Tesselation has been done!")
 
   rs1 <- rs2 %>%
     dplyr::group_by(id_cell) %>%
